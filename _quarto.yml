@@ -9,6 +9,9 @@ book:
   site-url: https://dev-notes-lightbridge.netlify.app
   chapters:
     - index.qmd
+    - part: Backend
+      chapters: 
+        - "content/backend/webservice-01-intro.qmd"
 
 bibliography: references.bib
 

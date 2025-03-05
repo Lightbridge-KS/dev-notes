@@ -1,0 +1,114 @@
+# Web Service Intro
+
+## Basic
+
+A **web service** is a standardized way for applications to communicate over the internet or a network using **HTTP(S)** and open protocols like **REST, SOAP, or GraphQL**. It allows different software systems, often running on different platforms, to exchange data and perform functions remotely.
+
+### Key Characteristics of a Web Service:
+
+1. **Interoperability** – Different applications can communicate regardless of their programming language (e.g., a Python service can interact with a Java service).
+2. **Uses Standard Protocols** – Typically uses HTTP(S) as the transport protocol.
+3. **Data Exchange Format** – Uses JSON, XML, or other standardized formats.
+4. **Platform-Independent** – Works across different operating systems and architectures.
+5. **Machine-to-Machine Communication** – Designed for programmatic interaction rather than human interaction.
+
+### Types of Web Services:
+
+| Type    | Description | Example |
+|---------|------------|---------|
+| **RESTful API** | Uses HTTP methods (GET, POST, PUT, DELETE) and JSON for lightweight communication. | GitHub API, Twitter API |
+| **SOAP (Simple Object Access Protocol)** | Uses XML-based messaging with strict specifications for security and reliability. | Banking and enterprise services |
+| **GraphQL** | Allows clients to request specific data structures, reducing over-fetching. | Facebook API |
+
+
+## RESTful API
+
+You can interact with a RESTful API in the Mac Terminal using `curl`, a command-line tool for making HTTP requests. Here's an example using a public API.
+
+### Example: Fetching data from a RESTful API
+
+Let's use the JSONPlaceholder API, which provides fake data for testing.
+
+#### 1. **GET Request (Retrieve Data)**
+
+Run this in your Terminal:
+
+```bash
+curl -X GET https://jsonplaceholder.typicode.com/posts/1
+```
+
+This sends a `GET` request to retrieve post **ID 1**. The response will be in JSON format:
+
+```json
+{
+  "userId": 1,
+  "id": 1,
+  "title": "sunt aut facere repellat provident occaecati excepturi optio reprehenderit",
+  "body": "quia et suscipit..."
+}
+```
+
+#### 2. **POST Request (Send Data)**
+
+To create a new post, use:
+
+```bash
+curl -X POST https://jsonplaceholder.typicode.com/posts \
+     -H "Content-Type: application/json" \
+     -d '{"title": "Hello World", "body": "This is my first API request!", "userId": 1}'
+```
+
+- `-X POST` → Specifies a `POST` request.
+- `-H "Content-Type: application/json"` → Sets the request header to JSON.
+- `-d` → Sends JSON data.
+
+If successful, you'll get a response like:
+
+```json
+{
+  "title": "Hello World",
+  "body": "This is my first API request!",
+  "userId": 1,
+  "id": 101
+}
+```
+
+#### 3. **PUT Request (Update Data)**
+
+To update post **ID 1**, use:
+
+```bash
+curl -X PUT https://jsonplaceholder.typicode.com/posts/1 \
+     -H "Content-Type: application/json" \
+     -d '{"title": "Updated Title", "body": "Updated body content", "userId": 1}'
+```
+
+This replaces the existing post with new data.
+
+#### 4. **DELETE Request (Remove Data)**
+
+To delete post **ID 1**, use:
+
+```bash
+curl -X DELETE https://jsonplaceholder.typicode.com/posts/1
+```
+
+If successful, the API will return an empty response.
+
+---
+
+### Handling API Responses More Readably
+
+To format the JSON output in your Mac Terminal, install `jq` (a command-line JSON processor):
+
+```bash
+brew install jq
+```
+
+Then, modify your `curl` command:
+
+```bash
+curl -X GET https://jsonplaceholder.typicode.com/posts/1 | jq
+```
+
+This will pretty-print the JSON response.
