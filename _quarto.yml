@@ -1,0 +1,18 @@
+project:
+  type: book
+
+book:
+  title: "Developer Notes"
+  author: "Kittipos"
+  date: today
+  repo-url: https://github.com/Lightbridge-KS/dev-notes
+  site-url: https://dev-notes-lightbridge.netlify.app
+  chapters:
+    - index.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme:
+      - cosmo
