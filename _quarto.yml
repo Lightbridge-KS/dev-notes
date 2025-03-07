@@ -16,6 +16,9 @@ book:
     - part: Server
       chapters: 
         - "content/backend/ssh-01-intro.qmd"
+    - part: File system
+      chapters: 
+        - "content/fs/download-file.ipynb"
 
 bibliography: references.bib
 
