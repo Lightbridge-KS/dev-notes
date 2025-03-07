@@ -1,0 +1,95 @@
+# SSH intro
+
+SSH (Secure Shell) is a cryptographic network protocol used for securely connecting to remote servers over an unsecured network. It allows users to execute commands, transfer files, and manage systems remotely in a secure manner.
+
+**Key Features of SSH:**
+
+1. **Encrypted Communication** – SSH uses encryption (typically RSA, ECDSA, or Ed25519 keys) to prevent eavesdropping and unauthorized access.
+2. **Authentication** – Users authenticate via **passwords** or **SSH key pairs** (more secure).
+3. **Remote Command Execution** – You can run commands on the remote machine as if you were physically present.
+4. **File Transfer** – With `scp` (Secure Copy) or `sftp` (SSH File Transfer Protocol), you can securely transfer files.
+5. **Port Forwarding (Tunneling)** – SSH can forward ports securely (e.g., accessing a database behind a firewall).
+
+---
+
+### Basic SSH Usage
+
+#### Connect to a Remote Server
+
+```bash
+ssh username@remote_server_ip
+```
+- Example: 
+  ```bash
+  ssh user@192.168.1.100
+  ```
+
+#### Using SSH Key Authentication (Recommended)
+
+Generate an SSH key on your local machine:
+
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
+```
+
+Copy the key to the remote server:
+
+```bash
+ssh-copy-id username@remote_server_ip
+```
+
+Then, connect without a password:
+
+```bash
+ssh username@remote_server_ip
+```
+
+#### Securely Transfer Files
+
+- Copy a file to the remote server:
+  ```bash
+  scp file.txt username@remote_server_ip:/remote/path/
+  ```
+- Copy a file from the remote server:
+  ```bash
+  scp username@remote_server_ip:/remote/path/file.txt .
+  ```
+
+#### Running a Command on a Remote Server
+
+Execute a command without logging in:
+
+```bash
+ssh username@remote_server_ip "ls -lah /var/log"
+```
+
+---
+
+### Common SSH Configurations
+
+#### Editing SSH Config File (`~/.ssh/config`)
+
+You can simplify SSH connections by adding configurations:
+
+```bash
+Host myserver
+    HostName 192.168.1.100
+    User myuser
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+Now, connect using:
+
+```bash
+ssh myserver
+```
+
+---
+
+### **Security Best Practices**
+
+1. **Use SSH Keys Instead of Passwords** – Keys are harder to brute-force.
+2. **Disable Root Login** – Set `PermitRootLogin no` in `/etc/ssh/sshd_config`.
+3. **Change Default SSH Port** – Using a non-standard port (e.g., `2222`) helps reduce bot attacks.
+4. **Use a Firewall** – Allow SSH access only to trusted IPs.
+5. **Enable Fail2Ban** – Prevent brute-force attacks by banning repeated failed attempts.
