@@ -1,0 +1,156 @@
+# SSH in VS Code
+
+## Installing the Remote-SSH Extension
+
+First, install the Remote-SSH extension in VS Code:
+
+1. Open VS Code
+2. Press `Cmd+Shift+X` to open Extensions
+3. Search for "Remote - SSH"
+4. Install the official extension by Microsoft (it has a blue remote icon)
+
+## Connecting to a Remote Server
+
+Once installed, you have several ways to connect:
+
+**Method 1 - Command Palette (Quick Connect):**
+
+1. Press `Cmd+Shift+P` to open Command Palette
+2. Type "Remote-SSH: Connect to Host..."
+3. Enter your connection string: `username@hostname`
+4. Enter the server password (or it will use your SSH key automatically)
+
+**Method 2 - Using SSH Config (Recommended):**
+
+Since you've already set up your `~/.ssh/config` file, this is even easier:
+
+1. Press `Cmd+Shift+P`
+2. Type "Remote-SSH: Connect to Host..."
+3. You'll see your configured hosts (like "myserver", "dataserver")
+4. Select one and VS Code will connect
+
+**Method 3 - From the Remote Explorer:**
+
+1. Click the Remote Explorer icon in the left sidebar (looks like a monitor with a small icon)
+2. You'll see your SSH targets
+3. Click the arrow next to a host to connect
+
+## First Connection
+
+When you first connect to a server:
+
+1. VS Code will ask about the server's platform (Linux, macOS, Windows) - usually Linux
+2. It will install VS Code Server on the remote machine (happens automatically)
+3. A new VS Code window opens connected to the remote server
+4. Look at the bottom-left corner - you'll see "SSH: servername" indicating you're connected
+
+## Working with Remote Files
+
+Once connected:
+
+- **Open a folder**: Click "Open Folder" and browse the remote filesystem
+- **Open terminal**: Press `` Ctrl+` `` to open a terminal on the remote server
+- **Install extensions**: Extensions can be installed locally or on the remote server
+
+## Useful Features for Your Workflow
+
+**1. Port Forwarding** (great for Jupyter notebooks or web apps):
+
+```bash
+# If you run Jupyter on the remote server
+jupyter notebook --no-browser --port=8888
+```
+
+VS Code automatically forwards the port. You can access it at `localhost:8888` on your Mac.
+
+**2. Remote Explorer Settings**:
+
+Add this to your VS Code settings (`Cmd+,`):
+
+```json
+{
+    "remote.SSH.defaultExtensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter"
+    ],
+    "remote.SSH.connectTimeout": 30
+}
+```
+
+**3. Managing Multiple Connections**:
+
+You can have multiple VS Code windows open, each connected to different servers. Great for comparing code across environments.
+
+## Python Development Setup
+
+Since you work with Python, after connecting to a remote server:
+
+1. Install Python extension on the remote server (it will prompt you)
+2. Select Python interpreter: `Cmd+Shift+P` → "Python: Select Interpreter"
+3. Choose the appropriate conda/virtual environment
+
+Example workflow for your radiology AI projects:
+
+```bash
+# In VS Code terminal on remote server
+conda activate radiology-ai
+cd /home/kittipos/projects/ct-scan-analysis
+# Now you can edit and run Python files directly
+```
+
+## Tips for Data Science Work
+
+**1. Jupyter Notebooks**:
+- Open `.ipynb` files directly in VS Code
+- They'll run on the remote server's compute resources
+- Great for training models on powerful GPUs
+
+**2. Large Data Files**:
+- Use the remote server's storage
+- Files stay on the server (no need to download)
+- Process data where it lives
+
+**3. Background Processes**:
+```bash
+# Start long-running training in VS Code terminal
+nohup python train_model.py > training.log 2>&1 &
+# You can disconnect and the process continues
+```
+
+## Common Configuration
+
+Add to your VS Code settings.json for better remote experience:
+
+```json
+{
+    "remote.SSH.showLoginTerminal": true,
+    "remote.SSH.configFile": "~/.ssh/config",
+    "remote.SSH.remotePlatform": {
+        "myserver": "linux",
+        "dataserver": "linux"
+    }
+}
+```
+
+## Troubleshooting
+
+If you have connection issues:
+
+1. **Test SSH first**: Make sure `ssh myserver` works in terminal
+2. **Check Remote-SSH output**: View → Output → Select "Remote-SSH" from dropdown
+3. **Clear VS Code Server**: Sometimes you need to remove and reinstall:
+   ```bash
+   ssh myserver
+   rm -rf ~/.vscode-server
+   ```
+
+## Pro Tips
+
+1. **Save Workspace**: Once connected and folder opened, save as workspace (`File → Save Workspace As...`) for quick access later
+
+2. **Sync Settings**: Enable Settings Sync to have your preferences on all remote connections
+
+3. **GPU Monitoring**: If using GPU servers, add GPU monitoring extensions to track usage while training models
+
+Would you like help setting up any specific aspects, like configuring Python environments or setting up port forwarding for Jupyter notebooks?

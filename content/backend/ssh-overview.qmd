@@ -1,0 +1,178 @@
+# SSH Overview
+
+I'll guide you through the basics of using SSH to connect to remote servers from your Mac terminal. Since you already have some command-line experience with zsh and Git, this will be a natural extension of your skills.
+
+## What is SSH?
+
+SSH (Secure Shell) is a network protocol that allows you to securely connect to and control remote computers over the internet. Think of it as a secure tunnel between your Mac and another computer - once connected, you can run commands on the remote machine as if you were sitting right in front of it.
+
+## Basic SSH Connection
+
+The fundamental SSH command follows this pattern:
+
+```bash
+ssh username@hostname
+```
+
+Let me break this down:
+
+- `ssh` is the command itself
+- `username` is your account name on the remote server
+- `@` separates the username from the hostname
+- `hostname` can be either an IP address (like 192.168.1.100) or a domain name (like example.com)
+
+For example, if you had an account named "kittipos" on a server at "research.hospital.com", you would connect with:
+
+```bash
+ssh kittipos@research.hospital.com
+```
+
+## Your First Connection
+
+When you first connect to a new server, you'll see a message like this:
+
+```
+The authenticity of host 'example.com (192.168.1.1)' can't be established.
+ECDSA key fingerprint is SHA256:xyz123...
+Are you sure you want to continue connecting (yes/no/[fingerprint])?
+```
+
+This is SSH's way of saying "I haven't connected to this server before - is this really the server you want?" Type `yes` and press Enter. SSH will remember this server for future connections.
+
+Next, you'll be prompted for your password. As you type, you won't see any characters appear - this is a security feature. Just type your password and press Enter.
+
+## Essential SSH Commands and Options
+
+Here are the most useful SSH options you'll need:
+
+```bash
+# Connect with a specific port (if not using default port 22)
+ssh -p 2222 username@hostname
+
+# Connect with verbose output (helpful for troubleshooting)
+ssh -v username@hostname
+
+# Exit an SSH session
+# Once connected, simply type:
+exit
+# Or press Ctrl+D
+```
+
+## SSH Keys: The Better Way
+
+While passwords work, SSH keys are more secure and convenient. Think of SSH keys like a special lock and key pair - you keep the key (private key) on your Mac, and you give the lock (public key) to the server.
+
+Here's how to set up SSH keys:
+
+1. **Generate a key pair** on your Mac:
+
+```bash
+ssh-keygen -t ed25519 -C "your_email@example.com"
+```
+
+When prompted for a file location, just press Enter to use the default. You can also add a passphrase for extra security (recommended).
+
+2. **Copy your public key to the server**:
+
+```bash
+ssh-copy-id username@hostname
+```
+
+This command will ask for your password one last time, then copy your public key to the server.
+
+3. **Test the connection** - you should now be able to connect without entering a password:
+
+```bash
+ssh username@hostname
+```
+
+## SSH Config File: Making Life Easier
+
+Since you're already comfortable with VS Code, you'll appreciate this: you can create shortcuts for your SSH connections. Create or edit the file `~/.ssh/config`:
+
+```bash
+# Open the config file in VS Code
+code ~/.ssh/config
+```
+
+Add entries like this:
+
+```
+Host myserver
+    HostName research.hospital.com
+    User kittipos
+    Port 22
+
+Host dataserver
+    HostName 192.168.1.100
+    User admin
+    Port 2222
+```
+
+Now you can connect simply by typing:
+
+```bash
+ssh myserver
+# Instead of: ssh kittipos@research.hospital.com
+
+ssh dataserver
+# Instead of: ssh -p 2222 admin@192.168.1.100
+```
+
+## Practical Examples for Your Work
+
+Given your work with AI and radiology data, here are some practical SSH use cases:
+
+1. **Copying files to/from remote servers** using SCP (Secure Copy):
+
+```bash
+# Copy a file to remote server
+scp /Users/kittipos/Desktop/model.py username@hostname:/home/username/models/
+
+# Copy a file from remote server
+scp username@hostname:/data/scan_results.csv /Users/kittipos/Downloads/
+
+# Copy an entire directory
+scp -r /Users/kittipos/Desktop/project/ username@hostname:/home/username/
+```
+
+2. **Running long processes** that continue even after you disconnect:
+
+```bash
+# After connecting via SSH, use screen or tmux
+screen -S training
+# Run your Python script
+python train_model.py
+# Detach with Ctrl+A, then D
+# Later, reattach with:
+screen -r training
+```
+
+## Common Issues and Solutions
+
+Here are solutions to problems you might encounter:
+
+1. **"Permission denied" errors**: Usually means wrong username or password. Double-check both.
+
+2. **"Connection refused"**: The server might be down, or SSH might be running on a different port.
+
+3. **"Host key verification failed"**: The server's identity has changed. This could be normal (server was reinstalled) or a security issue. Contact your system administrator.
+
+## Security Best Practices
+
+As someone working with medical data, security is crucial:
+
+1. Always use SSH keys instead of passwords when possible
+2. Use strong passphrases for your SSH keys
+3. Keep your private keys secure (never share them or commit them to Git)
+4. Regularly review and update authorized keys on servers you manage
+
+## Next Steps
+
+Once you're comfortable with basic SSH:
+
+1. Learn about SSH tunneling for secure database connections
+2. Explore SSH agent forwarding for jumping between servers
+3. Set up VS Code's Remote-SSH extension to edit files directly on remote servers
+
+Would you like me to elaborate on any of these topics, or do you have specific scenarios from your radiology AI work where you need to use SSH?

@@ -15,7 +15,9 @@ book:
         - "content/backend/webservice-02-python.ipynb"
     - part: Server
       chapters: 
-        - "content/backend/ssh-01-intro.qmd"
+        - "content/backend/ssh-overview.qmd"
+        - "content/backend/ssh-intro.qmd"
+        - "content/backend/ssh-vscode.qmd"
     - part: File system
       chapters: 
         - "content/fs/download-file.ipynb"
