@@ -9,6 +9,9 @@ book:
   site-url: https://dev-notes-lightbridge.netlify.app
   chapters:
     - index.qmd
+    - part: Software Design
+      chapters: 
+        - "content/design/design_platform-abs-layer.qmd"
     - part: WebService
       chapters: 
         - "content/backend/webservice-01-intro.qmd"
