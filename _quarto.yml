@@ -15,6 +15,7 @@ book:
         - "content/design/design_dependency-injection.qmd"
         - "content/design/design_three_paradigms.qmd"
         - "content/design/design_dao.qmd"
+        - "content/design/design_dao-RESTful-API.qmd"
     - part: WebService
       chapters: 
         - "content/backend/webservice-01-intro.qmd"

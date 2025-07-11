@@ -1,0 +1,461 @@
+# RESTful API DAO
+
+I'll show you a minimal RESTful API using Flask that demonstrates the DAO pattern with both mock and production implementations. This example will handle basic CRUD operations for a patient management system.
+
+## Complete Implementation
+
+```python
+from flask import Flask, request, jsonify
+from abc import ABC, abstractmethod
+from typing import List, Optional, Dict, Any
+import sqlite3
+import os
+from datetime import datetime
+
+# =============================================================================
+# 1. Data Transfer Object (DTO)
+# =============================================================================
+
+class Patient:
+    """Simple data container for patient information"""
+    def __init__(self, patient_id=None, name=None, age=None, diagnosis=None):
+        self.patient_id = patient_id
+        self.name = name
+        self.age = age
+        self.diagnosis = diagnosis
+        self.created_at = datetime.now().isoformat()
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert patient to dictionary for JSON serialization"""
+        return {
+            'patient_id': self.patient_id,
+            'name': self.name,
+            'age': self.age,
+            'diagnosis': self.diagnosis,
+            'created_at': self.created_at
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Patient':
+        """Create patient from dictionary"""
+        return cls(
+            patient_id=data.get('patient_id'),
+            name=data.get('name'),
+            age=data.get('age'),
+            diagnosis=data.get('diagnosis')
+        )
+
+# =============================================================================
+# 2. DAO Interface
+# =============================================================================
+
+class PatientDAO(ABC):
+    """Abstract interface defining patient data operations"""
+    
+    @abstractmethod
+    def create(self, patient: Patient) -> Patient:
+        pass
+    
+    @abstractmethod
+    def get_by_id(self, patient_id: int) -> Optional[Patient]:
+        pass
+    
+    @abstractmethod
+    def get_all(self) -> List[Patient]:
+        pass
+    
+    @abstractmethod
+    def update(self, patient: Patient) -> Optional[Patient]:
+        pass
+    
+    @abstractmethod
+    def delete(self, patient_id: int) -> bool:
+        pass
+
+# =============================================================================
+# 3. Mock Implementation (for testing/development)
+# =============================================================================
+
+class MockPatientDAO(PatientDAO):
+    """Mock implementation using in-memory storage"""
+    
+    def __init__(self):
+        self.patients = {}
+        self.next_id = 1
+        # Pre-populate with some test data
+        self._seed_data()
+    
+    def _seed_data(self):
+        """Add some initial test data"""
+        test_patients = [
+            Patient(name="John Doe", age=45, diagnosis="Pneumonia"),
+            Patient(name="Jane Smith", age=32, diagnosis="Fracture"),
+            Patient(name="Bob Johnson", age=67, diagnosis="Diabetes")
+        ]
+        for patient in test_patients:
+            self.create(patient)
+    
+    def create(self, patient: Patient) -> Patient:
+        patient.patient_id = self.next_id
+        self.patients[self.next_id] = patient
+        self.next_id += 1
+        return patient
+    
+    def get_by_id(self, patient_id: int) -> Optional[Patient]:
+        return self.patients.get(patient_id)
+    
+    def get_all(self) -> List[Patient]:
+        return list(self.patients.values())
+    
+    def update(self, patient: Patient) -> Optional[Patient]:
+        if patient.patient_id in self.patients:
+            self.patients[patient.patient_id] = patient
+            return patient
+        return None
+    
+    def delete(self, patient_id: int) -> bool:
+        if patient_id in self.patients:
+            del self.patients[patient_id]
+            return True
+        return False
+
+# =============================================================================
+# 4. Production Implementation (SQLite database)
+# =============================================================================
+
+class SQLitePatientDAO(PatientDAO):
+    """Production implementation using SQLite database"""
+    
+    def __init__(self, db_path: str = "patients.db"):
+        self.db_path = db_path
+        self._init_database()
+    
+    def _init_database(self):
+        """Initialize the database schema"""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS patients (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    age INTEGER NOT NULL,
+                    diagnosis TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            ''')
+    
+    def create(self, patient: Patient) -> Patient:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                'INSERT INTO patients (name, age, diagnosis, created_at) VALUES (?, ?, ?, ?)',
+                (patient.name, patient.age, patient.diagnosis, patient.created_at)
+            )
+            patient.patient_id = cursor.lastrowid
+        return patient
+    
+    def get_by_id(self, patient_id: int) -> Optional[Patient]:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                'SELECT id, name, age, diagnosis, created_at FROM patients WHERE id = ?',
+                (patient_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                patient = Patient(row[1], row[2], row[3])
+                patient.patient_id = row[0]
+                patient.created_at = row[4]
+                return patient
+        return None
+    
+    def get_all(self) -> List[Patient]:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                'SELECT id, name, age, diagnosis, created_at FROM patients ORDER BY id'
+            )
+            patients = []
+            for row in cursor.fetchall():
+                patient = Patient(row[1], row[2], row[3])
+                patient.patient_id = row[0]
+                patient.created_at = row[4]
+                patients.append(patient)
+        return patients
+    
+    def update(self, patient: Patient) -> Optional[Patient]:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                'UPDATE patients SET name = ?, age = ?, diagnosis = ? WHERE id = ?',
+                (patient.name, patient.age, patient.diagnosis, patient.patient_id)
+            )
+            if cursor.rowcount > 0:
+                return patient
+        return None
+    
+    def delete(self, patient_id: int) -> bool:
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute('DELETE FROM patients WHERE id = ?', (patient_id,))
+            return cursor.rowcount > 0
+
+# =============================================================================
+# 5. Service Layer
+# =============================================================================
+
+class PatientService:
+    """Business logic layer that uses the DAO"""
+    
+    def __init__(self, patient_dao: PatientDAO):
+        self.patient_dao = patient_dao
+    
+    def create_patient(self, name: str, age: int, diagnosis: str) -> Patient:
+        """Create a new patient with validation"""
+        # Business logic validation
+        if not name or not name.strip():
+            raise ValueError("Patient name is required")
+        if age < 0 or age > 150:
+            raise ValueError("Age must be between 0 and 150")
+        if not diagnosis or not diagnosis.strip():
+            raise ValueError("Diagnosis is required")
+        
+        patient = Patient(name=name.strip(), age=age, diagnosis=diagnosis.strip())
+        return self.patient_dao.create(patient)
+    
+    def get_patient(self, patient_id: int) -> Optional[Patient]:
+        """Get patient by ID"""
+        return self.patient_dao.get_by_id(patient_id)
+    
+    def get_all_patients(self) -> List[Patient]:
+        """Get all patients"""
+        return self.patient_dao.get_all()
+    
+    def update_patient(self, patient_id: int, name: str = None, age: int = None, diagnosis: str = None) -> Optional[Patient]:
+        """Update patient with validation"""
+        existing_patient = self.patient_dao.get_by_id(patient_id)
+        if not existing_patient:
+            return None
+        
+        # Update only provided fields
+        if name is not None:
+            if not name.strip():
+                raise ValueError("Patient name cannot be empty")
+            existing_patient.name = name.strip()
+        
+        if age is not None:
+            if age < 0 or age > 150:
+                raise ValueError("Age must be between 0 and 150")
+            existing_patient.age = age
+        
+        if diagnosis is not None:
+            if not diagnosis.strip():
+                raise ValueError("Diagnosis cannot be empty")
+            existing_patient.diagnosis = diagnosis.strip()
+        
+        return self.patient_dao.update(existing_patient)
+    
+    def delete_patient(self, patient_id: int) -> bool:
+        """Delete patient by ID"""
+        return self.patient_dao.delete(patient_id)
+
+# =============================================================================
+# 6. Flask REST API
+# =============================================================================
+
+def create_app(use_mock: bool = False) -> Flask:
+    """Create Flask app with specified DAO implementation"""
+    app = Flask(__name__)
+    
+    # Choose DAO implementation based on environment
+    if use_mock:
+        patient_dao = MockPatientDAO()
+        print("Using Mock DAO (in-memory storage)")
+    else:
+        patient_dao = SQLitePatientDAO()
+        print("Using SQLite DAO (database storage)")
+    
+    # Initialize service
+    patient_service = PatientService(patient_dao)
+    
+    # Error handler
+    @app.errorhandler(ValueError)
+    def handle_value_error(error):
+        return jsonify({'error': str(error)}), 400
+    
+    @app.errorhandler(404)
+    def handle_not_found(error):
+        return jsonify({'error': 'Resource not found'}), 404
+    
+    # Routes
+    @app.route('/patients', methods=['GET'])
+    def get_patients():
+        """GET /patients - Get all patients"""
+        patients = patient_service.get_all_patients()
+        return jsonify([patient.to_dict() for patient in patients])
+    
+    @app.route('/patients/<int:patient_id>', methods=['GET'])
+    def get_patient(patient_id):
+        """GET /patients/{id} - Get patient by ID"""
+        patient = patient_service.get_patient(patient_id)
+        if not patient:
+            return jsonify({'error': 'Patient not found'}), 404
+        return jsonify(patient.to_dict())
+    
+    @app.route('/patients', methods=['POST'])
+    def create_patient():
+        """POST /patients - Create new patient"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'JSON data required'}), 400
+            
+            patient = patient_service.create_patient(
+                name=data.get('name'),
+                age=data.get('age'),
+                diagnosis=data.get('diagnosis')
+            )
+            return jsonify(patient.to_dict()), 201
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+    
+    @app.route('/patients/<int:patient_id>', methods=['PUT'])
+    def update_patient(patient_id):
+        """PUT /patients/{id} - Update patient"""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'JSON data required'}), 400
+            
+            patient = patient_service.update_patient(
+                patient_id=patient_id,
+                name=data.get('name'),
+                age=data.get('age'),
+                diagnosis=data.get('diagnosis')
+            )
+            
+            if not patient:
+                return jsonify({'error': 'Patient not found'}), 404
+            
+            return jsonify(patient.to_dict())
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+    
+    @app.route('/patients/<int:patient_id>', methods=['DELETE'])
+    def delete_patient(patient_id):
+        """DELETE /patients/{id} - Delete patient"""
+        if patient_service.delete_patient(patient_id):
+            return jsonify({'message': 'Patient deleted successfully'})
+        else:
+            return jsonify({'error': 'Patient not found'}), 404
+    
+    @app.route('/health', methods=['GET'])
+    def health_check():
+        """Health check endpoint"""
+        dao_type = "Mock" if use_mock else "SQLite"
+        return jsonify({
+            'status': 'healthy',
+            'dao_implementation': dao_type,
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    return app
+
+# =============================================================================
+# 7. Application Entry Point
+# =============================================================================
+
+if __name__ == '__main__':
+    # Check environment variable to determine which DAO to use
+    use_mock = os.getenv('USE_MOCK_DAO', 'false').lower() == 'true'
+    
+    app = create_app(use_mock=use_mock)
+    
+    # Run the application
+    print("Starting Patient Management API...")
+    print("Available endpoints:")
+    print("  GET    /patients        - Get all patients")
+    print("  GET    /patients/{id}   - Get patient by ID")
+    print("  POST   /patients        - Create new patient")
+    print("  PUT    /patients/{id}   - Update patient")
+    print("  DELETE /patients/{id}   - Delete patient")
+    print("  GET    /health          - Health check")
+    
+    app.run(debug=True, port=5000)
+```
+
+## How to Use This API
+
+### 1. Running with Mock Data (Development)
+
+```bash
+# Set environment variable to use mock DAO
+export USE_MOCK_DAO=true
+python app.py
+```
+
+### 2. Running with Database (Production)
+
+```bash
+# Use database DAO (default)
+python app.py
+```
+
+### 3. Testing the API
+
+Here are some curl commands to test the API:
+
+```bash
+# 1. Check health
+curl -X GET http://localhost:5000/health
+
+# 2. Get all patients
+curl -X GET http://localhost:5000/patients
+
+# 3. Get specific patient
+curl -X GET http://localhost:5000/patients/1
+
+# 4. Create new patient
+curl -X POST http://localhost:5000/patients \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Alice Johnson",
+    "age": 28,
+    "diagnosis": "Migraine"
+  }'
+
+# 5. Update patient
+curl -X PUT http://localhost:5000/patients/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe Updated",
+    "age": 46
+  }'
+
+# 6. Delete patient
+curl -X DELETE http://localhost:5000/patients/1
+```
+
+## Key Benefits of This Implementation
+
+**Environment Flexibility**: You can easily switch between mock and production implementations using environment variables. This is perfect for development, testing, and production environments.
+
+**Clean Separation**: The REST API layer doesn't know or care about the underlying data storage implementation. It only interacts with the service layer, which uses the DAO interface.
+
+**Easy Testing**: You can run your API with mock data during development and testing, then switch to a real database for production without changing any code.
+
+**Consistent Interface**: Both implementations follow the same contract, ensuring your API behaves consistently regardless of the storage backend.
+
+## Production Considerations
+
+For a production deployment, you might want to add:
+
+```python
+# Configuration management
+class Config:
+    DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///patients.db')
+    USE_MOCK_DAO = os.getenv('USE_MOCK_DAO', 'false').lower() == 'true'
+
+# Factory pattern for DAO creation
+def create_patient_dao() -> PatientDAO:
+    if Config.USE_MOCK_DAO:
+        return MockPatientDAO()
+    else:
+        return SQLitePatientDAO()
+```
+
+This approach gives you maximum flexibility while maintaining clean, testable code that's easy to understand and maintain.
