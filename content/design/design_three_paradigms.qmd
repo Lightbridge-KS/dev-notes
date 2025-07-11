@@ -1,0 +1,149 @@
+# Three Programming Paradigms 
+
+![Programming Types Example](../../img/design/programming-types.png){#fig-programming-types width="100%"}
+
+---
+
+## 1 – Programming to an *implementation*
+
+```
+┌──────────────┐          (no abstraction layer)
+│   Client     ├─────────────┐
+└──────────────┘             │   “knows concrete Dog”
+                              ▼
+                        ┌──────────┐
+                        │   Dog    │
+                        ├──────────┤
+                        │ +bark()  │
+                        └──────────┘
+```
+
+```python
+# --- rigid, concrete design ---------------------------------
+class Dog:
+    def bark(self) -> None:
+        print("Woof!")
+
+# Client
+d = Dog()       # must be a Dog here
+d.bark()
+```
+
+---
+
+## 2 – Programming to an *interface / super-type*
+
+```
+                    «interface»
+                 ┌──────────────┐
+                 │   Animal     │
+                 ├──────────────┤
+                 │ +makeSound() │
+                 └──────────────┘
+                     ▲       ▲
+                     │       │
+            ┌────────┘       └────────┐
+        ┌──────────┐             ┌──────────┐
+        │   Dog    │             │   Cat    │
+        ├──────────┤             ├──────────┤
+        │+makeSound│             │+makeSound│
+        └──────────┘             └──────────┘
+                 ▲
+                 │  (depends on interface only)
+           ┌──────────────┐
+           │    Client    │
+           └──────────────┘
+```
+
+```python
+from abc import ABC, abstractmethod
+
+class Animal(ABC):
+    @abstractmethod
+    def make_sound(self) -> None: ...
+
+class Dog(Animal):
+    def make_sound(self) -> None:
+        print("Woof!")
+
+class Cat(Animal):
+    def make_sound(self) -> None:
+        print("Meow!")
+
+# Client sees only the Animal API
+animal: Animal = Dog()
+animal.make_sound()
+```
+
+---
+
+## 3 – Binding the concrete type *at runtime* (Factory / DI)
+
+```
+                    «interface»
+                 ┌──────────────┐
+                 │   Animal     │
+                 ├──────────────┤
+                 │ +makeSound() │
+                 └──────────────┘
+                     ▲       ▲
+                     │       │
+            ┌────────┘       └────────┐
+        ┌──────────┐             ┌──────────┐
+        │   Dog    │             │   Cat    │
+        ├──────────┤             ├──────────┤
+        │+makeSound│             │+makeSound│
+        └──────────┘             └──────────┘
+
+        (creates & returns Animal)
+        ┌─────────────────────────┐
+        │    AnimalFactory        │
+        ├─────────────────────────┤
+        │ +create() : Animal      │
+        └─────────────────────────┘
+                       │
+                       ▼
+                 ┌──────────────┐
+                 │    Client    │
+                 └──────────────┘
+```
+
+```python
+import random
+from abc import ABC, abstractmethod
+from typing import List
+
+# interface
+class Animal(ABC):
+    @abstractmethod
+    def make_sound(self) -> None: ...
+
+# concrete types
+class Dog(Animal):
+    def make_sound(self) -> None:
+        print("Woof!")
+
+class Cat(Animal):
+    def make_sound(self) -> None:
+        print("Meow!")
+
+# factory (could also be config, DI container, etc.)
+def animal_factory() -> Animal:
+    return random.choice([Dog(), Cat()])
+
+# Client code—zero knowledge of concrete classes
+pet = animal_factory()
+pet.make_sound()
+```
+
+---
+
+### At a glance
+
+| Style                  | Client depends on | Who decides the concrete class?              | Flexibility         |
+| ---------------------- | ----------------- | -------------------------------------------- | ------------------- |
+| Implementation         | `Dog` directly    | The client *in source code*                  | Rigid               |
+| Interface / super-type | `Animal`          | The client, but can swap per call-site       | Moderately flexible |
+| Runtime binding        | `Animal`          | A factory / DI / config *outside* the client | Highly flexible     |
+
+Choose the lightest approach that meets your project’s change-tolerance needs.

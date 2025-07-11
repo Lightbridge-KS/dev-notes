@@ -12,6 +12,8 @@ book:
     - part: Software Design
       chapters: 
         - "content/design/design_platform-abs-layer.qmd"
+        - "content/design/design_dependency-injection.qmd"
+        - "content/design/design_three_paradigms.qmd"
     - part: WebService
       chapters: 
         - "content/backend/webservice-01-intro.qmd"

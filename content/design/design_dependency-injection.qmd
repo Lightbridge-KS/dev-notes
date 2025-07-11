@@ -1,0 +1,97 @@
+# Dependency Injection
+
+**Dependency Injection (DI)** is a **design pattern** in software engineering that deals with how **objects acquire their dependencies** (i.e., other objects or resources they need to function).
+
+---
+
+### 🧠 Concept Overview
+
+* **“Dependency”**: An object or service that another object depends on.
+* **“Injection”**: Providing that dependency from outside rather than letting the object create it by itself.
+
+> Instead of a class **instantiating** its dependencies (tight coupling), they are **passed in** (injected) from the outside (loose coupling).
+
+This helps improve:
+
+* **Modularity**
+* **Testability**
+* **Flexibility**
+
+---
+
+### 🔧 Types of Dependency Injection
+
+| Type                      | How it's Injected                             |
+| ------------------------- | --------------------------------------------- |
+| **Constructor Injection** | Via constructor parameters                    |
+| **Setter Injection**      | Via setter methods or public properties       |
+| **Interface Injection**   | The dependency provides an injector interface |
+
+---
+
+### 🧪 Example in Python (Constructor Injection)
+
+Let’s say we have a `DatabaseService` that’s used in a `UserRepository`:
+
+#### 🔴 Without Dependency Injection (Tightly Coupled)
+
+```python
+class UserRepository:
+    def __init__(self):
+        self.db = DatabaseService()  # hard-coded dependency
+
+    def get_user(self, user_id):
+        return self.db.query(f"SELECT * FROM users WHERE id = {user_id}")
+```
+
+* `UserRepository` **creates** the `DatabaseService` → **hard to test** or reuse with another DB.
+
+#### 🟢 With Dependency Injection (Loosely Coupled)
+
+```python
+class UserRepository:
+    def __init__(self, db_service):
+        self.db = db_service  # dependency injected from outside
+
+    def get_user(self, user_id):
+        return self.db.query(f"SELECT * FROM users WHERE id = {user_id}")
+```
+
+Now you can pass in any `db_service`:
+
+```python
+# Example concrete dependency
+class DatabaseService:
+    def query(self, sql):
+        print(f"Executing SQL: {sql}")
+
+# Use dependency injection
+db = DatabaseService()
+repo = UserRepository(db)
+repo.get_user(123)
+```
+
+You can easily mock or replace the `DatabaseService` in testing:
+
+```python
+# A mock dependency
+class MockDatabaseService:
+    def query(self, sql):
+        return {"id": 123, "name": "Test User"}
+
+mock_repo = UserRepository(MockDatabaseService())
+print(mock_repo.get_user(123))  # → {'id': 123, 'name': 'Test User'}
+```
+
+---
+
+### 🧩 Summary Table
+
+| Feature             | Without DI               | With DI                  |
+| ------------------- | ------------------------ | ------------------------ |
+| Dependency creation | Inside the class         | Outside the class        |
+| Coupling            | Tight                    | Loose                    |
+| Testability         | Hard (need real objects) | Easy (mock dependencies) |
+| Flexibility         | Low                      | High                     |
+
+---
