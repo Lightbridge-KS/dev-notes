@@ -147,3 +147,132 @@ pet.make_sound()
 | Runtime binding        | `Animal`          | A factory / DI / config *outside* the client | Highly flexible     |
 
 Choose the lightest approach that meets your project’s change-tolerance needs.
+
+
+## Factory vs DI vs Config
+
+Below is a quick orientation first, then deeper dives with **side-by-side code** for three common ways to decouple *creation* from *use* of an object when you “bind the concrete type at runtime.”
+
+| Aspect                              | **Factory**                                           | **Dependency Injection (DI)**                                                                            | **Config-driven**                                                                              |
+| ----------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Where does the creation logic live? | In a *factory function/class* that returns the object | In the *composition root* (or a DI container) that **builds** the object and **injects** it into clients | Outside the codebase— a file/env/CLI flag decides *what* to build; code interprets that config |
+| What does the client know?          | Only the factory’s API                                | Only the **interface** (`Animal`)                                                                        | Only the interface and a *config accessor*                                                     |
+| How do you swap implementations?    | Change the factory’s internals                        | Wire a different object when composing or configure the container                                        | Edit the config file / env var (no code change)                                                |
+| Typical patterns/frameworks         | *Factory Method*, *Abstract Factory*                  | Manual DI, `dependency_injector`, `injector`, FastAPI/Flask providers                                    | `.ini`, `.yaml`, `.toml`, environment variables, feature-flags                                 |
+
+---
+
+### Shared setup: the interface and two concrete classes
+
+```python
+from abc import ABC, abstractmethod
+
+class Animal(ABC):
+    @abstractmethod
+    def make_sound(self) -> None: ...
+
+class Dog(Animal):
+    def make_sound(self) -> None:
+        print("Woof!")
+
+class Cat(Animal):
+    def make_sound(self) -> None:
+        print("Meow!")
+```
+
+---
+
+### 1  Factory pattern
+
+A **factory** owns the *decision* and the *construction*.
+
+```python
+import random
+
+def animal_factory(kind: str | None = None) -> Animal:
+    """Return an Animal, choice decided here."""
+    if kind == "dog":
+        return Dog()
+    if kind == "cat":
+        return Cat()
+    # default = random
+    return random.choice([Dog(), Cat()])
+
+# ─── client ───────────────────────────────────────────────
+pet = animal_factory("dog")      # caller just says “give me a dog”
+pet.make_sound()
+```
+
+*Change point*: only the `animal_factory` body.
+
+---
+
+### 2  Dependency-Injection (manual or with a container)
+
+Creation happens **outside** the part of the code that *uses* the object.
+The *client* receives an `Animal` via parameter or constructor.
+
+```python
+# business logic — agnostic of concrete type
+def play_with_pet(pet: Animal) -> None:
+    pet.make_sound()
+    # …more work with pet…
+
+# ─── composition root (main.py, framework bootstrap, etc.) ─
+def main() -> None:
+    # choose concrete class *here*
+    my_pet: Animal = Dog()              # or Cat(), or TestDummyAnimal()
+    play_with_pet(my_pet)               # injected dependency
+
+if __name__ == "__main__":
+    main()
+```
+
+#### Using a tiny DI container (*optional*)
+
+```python
+from dependency_injector import containers, providers  # pip install dependency-injector
+
+class Container(containers.DeclarativeContainer):
+    animal = providers.Factory(Dog)   # switch to Cat by editing one line
+
+container = Container()
+play_with_pet(container.animal())
+```
+
+*Change point*: a single provider registration line—tests can override it.
+
+---
+
+### 3  Config-driven instantiation
+
+The choice is moved to **data**. Code merely *reads* the config and instantiates accordingly (often using a factory under the hood).
+
+```python
+import json
+from pathlib import Path
+
+# config.json  →  {"animal": "cat"}
+config = json.loads(Path("config.json").read_text())
+kind = config.get("animal", "dog")     # default if key missing
+
+# Usually you still reuse a factory or a mapping:
+ANIMAL_MAP: dict[str, type[Animal]] = {"dog": Dog, "cat": Cat}
+
+pet_class = ANIMAL_MAP[kind]
+pet = pet_class()          # build the concrete object dictated by config
+
+play_with_pet(pet)
+```
+
+Now *non-developers* (DevOps, operators, even a feature-flag service) can switch the implementation without touching code or redeploying.
+
+---
+
+### Putting it all together
+
+* **Factory** centralises construction logic—good when you *own* the factory and callers shouldn’t care about the creation details.
+* **Dependency Injection** pushes creation entirely outside the consumer; the object arrives “pre-built.” Ideal for testability and pluggable architectures—frameworks often supply DI containers to automate the wiring.
+* **Config-driven** externalises the *decision* to data; your code becomes generic, and runtime behaviour changes by editing config, environment variables, or a feature-flag service. Often, a DI container or factory uses that config under the hood.
+
+Use whichever mechanism minimises coupling **and** fits the complexity budget of your project.
