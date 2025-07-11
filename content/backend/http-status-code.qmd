@@ -1,0 +1,78 @@
+### Quick refresher on the five classes
+
+| Class                  | Range   | What it means                                                           |
+| ---------------------- | ------- | ----------------------------------------------------------------------- |
+| **1 xx Informational** | 100–199 | The server **got the request** and is continuing to process it.         |
+| **2 xx Success**       | 200–299 | The client’s request **succeeded**.                                     |
+| **3 xx Redirection**   | 300–399 | Further action is needed—often a **redirect** to another URI.           |
+| **4 xx Client error**  | 400–499 | The request is **bad or forbidden**; the problem is on the client side. |
+| **5 xx Server error**  | 500–599 | The server **failed** to fulfil an apparently valid request.            |
+
+---
+
+### Common status codes by class
+
+| Code    | Name (RFC-defined reason-phrase) | Typical meaning / when you’ll see it                                  |
+| ------- | -------------------------------- | --------------------------------------------------------------------- |
+| **100** | Continue                         | Client can send the request body now (often used with large uploads). |
+| **101** | Switching Protocols              | Server is switching to WebSocket, HTTP/2, etc.                        |
+| **103** | Early Hints                      | Preloads resources while the final response is still being prepared.  |
+| **200** | OK | Standard “everything worked” response for GET/PUT/DELETE. |
+| **201** | Created | A new resource was successfully created (e.g., POST). |
+| **202** | Accepted | Request queued for processing; result not yet available. |
+| **204** | No Content | Success, but nothing to return (e.g., DELETE). |
+| **206** | Partial Content | Successful range request (e.g., video streaming). |
+| **207** | Multi-Status | WebDAV: multiple sub-status codes for batch operations. |
+| **226** | IM Used | Delta encoding returned (RFC 3229).
+| **300** | Multiple Choices | Several representations; user/UA must choose. |
+| **301** | Moved Permanently | Use the new URI forever (SEO-friendly redirect). |
+| **302** | Found | Temporary redirect (originally “Moved Temporarily”). |
+| **303** | See Other | Redirect using **GET** (common after POST/PUT). |
+| **304** | Not Modified | Cached copy is still valid (conditional GET). |
+| **307** | Temporary Redirect | Like 302 but **method and body are preserved**. |
+| **308** | Permanent Redirect | Like 301 but **method and body are preserved**.
+| **400** | Bad Request | Malformed syntax, invalid JSON, missing headers, etc. |
+| **401** | Unauthorized | Authentication required/failed (think “Unauth’d”). |
+| **403** | Forbidden | Authenticated but **not** allowed to access the resource. |
+| **404** | Not Found | Resource doesn’t exist (or you’re hiding that it does). |
+| **405** | Method Not Allowed | Endpoint exists but doesn’t support this HTTP method. |
+| **406** | Not Acceptable | Can’t serve any representation that satisfies `Accept` header. |
+| **408** | Request Timeout | Client took too long to send the request. |
+| **409** | Conflict | Versioning or uniqueness conflict (e.g., Git merge, username duplicate). |
+| **410** | Gone | Resource used to exist but is permanently removed. |
+| **411** | Length Required | Must include `Content-Length`. |
+| **412** | Precondition Failed | `If-Match`, `If-Unmodified-Since`, etc. didn’t match. |
+| **413** | Payload Too Large | Entity too big. |
+| **414** | URI Too Long | Often from overly long query strings. |
+| **415** | Unsupported Media Type | Cannot process request body’s format. |
+| **416** | Range Not Satisfiable | Invalid byte-range in `Range` header. |
+| **417** | Expectation Failed | `Expect: 100-continue` failed or similar. |
+| **418** | I’m a teapot | Easter-egg from RFC 2324 (Hyper Text Coffee Pot Control). |
+| **421** | Misdirected Request | Sent to wrong virtual host (HTTP/2). |
+| **422** | Unprocessable Content | Semantic errors — JSON valid but business-rule invalid (WebDAV/RFC 9457). |
+| **425** | Too Early | Server unwilling to risk replay (HTTP Early Data). |
+| **426** | Upgrade Required | Must switch to TLS/HTTP/2/WebSocket, etc. |
+| **428** | Precondition Required | Require conditional request to avoid lost update. |
+| **429** | Too Many Requests | Rate limit exceeded. |
+| **431** | Request Header Fields Too Large | Single header or total header section too big. |
+| **451** | Unavailable For Legal Reasons | Blocked for censorship or DMCA takedown.
+| **500** | Internal Server Error | Generic “something blew up” on the server. |
+| **501** | Not Implemented | Method not implemented by the server. |
+| **502** | Bad Gateway | Upstream server returned an invalid response (reverse proxy). |
+| **503** | Service Unavailable | Temporarily overloaded or down for maintenance; **try again later**. |
+| **504** | Gateway Timeout | Upstream server timed out. |
+| **505** | HTTP Version Not Supported | Rare; client used an unsupported version. |
+| **506** | Variant Also Negotiates | Content negotiation loop (RFC 2295). |
+| **507** | Insufficient Storage | WebDAV: disk full or quota exceeded. |
+| **508** | Loop Detected | WebDAV: infinite loop while processing `Depth` request. |
+| **510** | Not Extended | Further extensions are required (rare). |
+| **511** | Network Authentication Required | Captive portal: authenticate to gain network access.
+
+---
+
+### Practical tips
+
+* **Always log** both the status code and its context (method, path, user, correlation-ID) — helps trace problems quickly.
+* Use **4 xx** for problems the **client can fix** (bad input, auth issues) and **5 xx** for problems only the **server/operator can fix** (bugs, crashes, upstream outages).
+* Prefer **specific** codes (409, 422, 429) over generic ones (400, 500) to make APIs self-documenting.
+* Pair redirects (301/302/307/308) with correct cache headers (`Cache-Control`, `Expires`) so browsers and CDNs behave as intended.

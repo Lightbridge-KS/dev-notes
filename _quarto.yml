@@ -19,6 +19,7 @@ book:
     - part: WebService
       chapters: 
         - "content/backend/webservice-01-intro.qmd"
+        - "content/backend/http-status-code.qmd"
         - "content/backend/webservice-02-python.ipynb"
     - part: Server
       chapters: 
