@@ -276,3 +276,94 @@ Now *non-developers* (DevOps, operators, even a feature-flag service) can switch
 * **Config-driven** externalises the *decision* to data; your code becomes generic, and runtime behaviour changes by editing config, environment variables, or a feature-flag service. Often, a DI container or factory uses that config under the hood.
 
 Use whichever mechanism minimises coupling **and** fits the complexity budget of your project.
+
+## DI container
+
+### What exactly *is* a “DI container”?
+
+> **Dependency-Injection (DI) container**
+> A software component (library or framework) that *automates* the two jobs at the heart of dependency injection:
+>
+> 1. **Construction** – It creates all the concrete objects your application needs.
+> 2. **Wiring** – It resolves every object’s dependencies and supplies them at the right place (constructor, method, attribute, etc.).
+
+Because the container, not your business code, “owns” object creation and composition, we say it inverts control of that concern—hence the alternative name **IoC container** (Inversion-of-Control container).
+
+---
+
+### Core responsibilities
+
+| Responsibility                                                           | What it does                                                                                                 | Why it helps                                                                     |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| **Registration**                                                         | You *register* mappings: “When someone asks for `Animal`, build a `Dog` (or whatever).”                      | Centralises knowledge of concrete classes—no scattering `Dog()` calls.           |
+| **Resolution / Object-graph building**                                   | When code needs an `Animal`, the container recursively instantiates `Animal` *and everything it depends on*. | You write plain constructors; the container builds the full graph.               |
+| **Lifetime / scope management**                                          | Decides whether each object is `Singleton`, `Transient`, `Request-scoped`, etc.                              | Prevents global singletons and accidental resource leaks.                        |
+| **Optionally: interception, configuration, auto-wiring, health checks…** | Advanced containers add AOP-style interceptors, config binding, reflection-based auto-wiring, etc.           | Cuts boilerplate and enables cross-cutting concerns (logging, metrics, caching). |
+
+---
+
+### Mini Python example with `dependency-injector`
+
+```python
+# pip install dependency-injector
+from dependency_injector import containers, providers
+from abc import ABC, abstractmethod
+
+
+# ── Interfaces & implementations ────────────────────────────
+class Animal(ABC):
+    @abstractmethod
+    def make_sound(self) -> None: ...
+
+
+class Dog(Animal):
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def make_sound(self) -> None:
+        print(f"{self.name}: Woof!")
+
+
+# ── Business logic (no knowledge of concrete classes) ───────
+def play_with_pet(pet: Animal) -> None:
+    pet.make_sound()
+
+
+# ── DI container (composition root) ─────────────────────────
+class Container(containers.DeclarativeContainer):
+    config = providers.Configuration()          # binds env / YAML / etc.
+    animal = providers.Factory(                 # every call returns *new* Dog
+        Dog,
+        name=config.pet_name.from_value("Buddy")
+    )
+
+
+# ── Application bootstrap ───────────────────────────────────
+if __name__ == "__main__":
+    container = Container()
+    # could load YAML or env vars here → container.config.from_yaml("cfg.yml")
+
+    pet = container.animal()       # container resolves & builds Dog("Buddy")
+    play_with_pet(pet)
+```
+
+**What happened?**
+
+1. **Registration** – `animal = providers.Factory(Dog, …)` tells the container *how* to make an `Animal`.
+2. **Resolution** – `container.animal()` asks the container for an `Animal`; it constructs a `Dog`, providing the `name` parameter from config.
+3. **Injection** – `play_with_pet` receives the ready-to-use `Dog` without importing or instantiating it.
+
+Swap `Dog` for `Cat`, change lifetimes, or override providers in tests **without touching** `play_with_pet`.
+
+---
+
+### Benefits & trade-offs at a glance
+
+| 👍 Pros                                                         | 👎 Cons                                                    |
+| --------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Loosened coupling:** business code depends only on interfaces | Extra abstraction—may feel heavy for small scripts         |
+| **Centralised wiring:** one place to see/alter composition      | Reflection-based auto-wiring can hide dependencies (magic) |
+| **Testability:** easily inject mocks/stubs/fakes                | Learning curve; container misuse can hurt performance      |
+| **Lifecycle control:** singleton vs per-request vs transient    | Another runtime dependency to manage                       |
+
+In short, a DI container packages the “who builds what, and when” logic into a reusable, configurable service—letting your domain code focus purely on *what* it needs to do.
