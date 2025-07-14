@@ -26,6 +26,9 @@ book:
         - "content/backend/ssh-overview.qmd"
         - "content/backend/ssh-intro.qmd"
         - "content/backend/ssh-vscode.qmd"
+    - part: Crypto
+      chapters: 
+        - "content/crypto/https-jwt.qmd"
     - part: File system
       chapters: 
         - "content/fs/download-file.ipynb"

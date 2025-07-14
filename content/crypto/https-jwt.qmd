@@ -1,0 +1,196 @@
+# HTTPS vs JWT
+
+::: {.callout-note appearance="simple" collapse="false"}
+**Q:** Does HTTPS and JWT related? I means:
+
+- Does the data sent via HTTPS always JWT?
+- Does the JWT always sent with HTTPS protocol?
+- Can JWT be sent with HTTPS protocol?
+
+Does symmetric and asymmetric keys have a role in HTTPS and JWT, How?
+:::
+
+Let me clarify the relationship between HTTPS and JWT, along with the role of cryptographic keys in both.
+
+## HTTPS vs JWT: Different Layers, Different Purposes
+
+HTTPS and JWT operate at different layers and serve different purposes:
+
+```
+┌─────────────────────────────────────────┐
+│        Application Layer                │
+│  ┌─────────────────────────────────┐   │
+│  │   JWT (JSON Web Token)          │   │
+│  │   - Authentication/Authorization │   │
+│  │   - Data integrity               │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │   HTTP Request/Response         │   │
+│  │   - Headers, Body, etc.         │   │
+│  └─────────────────────────────────┘   │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│        Transport Layer                  │
+│  ┌─────────────────────────────────┐   │
+│  │   HTTPS (HTTP over TLS/SSL)     │   │
+│  │   - Transport encryption         │   │
+│  │   - Server authentication        │   │
+│  └─────────────────────────────────┘   │
+└─────────────────────────────────────────┘
+```
+
+## Answering Your Questions
+
+### 1. Does the data sent via HTTPS always JWT?
+
+**No.** HTTPS can transport any type of data:
+
+- HTML pages
+- JSON data (with or without JWT)
+- Images, videos, files
+- Form data
+- Plain text
+- JWT tokens (when used)
+
+### 2. Does the JWT always sent with HTTPS protocol?
+
+**No, but it should be!** JWT can technically be sent over:
+
+- HTTP (insecure - NOT recommended)
+- HTTPS (secure - recommended)
+- WebSocket connections
+- Other protocols
+
+However, sending JWT over plain HTTP is a security risk because the token can be intercepted.
+
+### 3. Can JWT be sent with HTTPS protocol?
+
+**Yes, absolutely!** This is the recommended practice. JWT is commonly sent via HTTPS in:
+
+- Authorization headers: `Authorization: Bearer <JWT>`
+- Cookies
+- Request body
+- URL parameters (not recommended for security reasons)
+
+## Cryptographic Keys in HTTPS and JWT
+
+### HTTPS Cryptography Flow
+
+```
+Client                          Server
+  │                               │
+  │  1. ClientHello              │
+  ├──────────────────────────────>│
+  │                               │
+  │  2. ServerHello +             │
+  │     Certificate (Public Key)  │
+  │<──────────────────────────────┤
+  │                               │
+  │  3. Verify Certificate        │
+  │     Generate Pre-Master Secret│
+  │     Encrypt with Server's     │
+  │     Public Key                │
+  ├──────────────────────────────>│
+  │                               │
+  │  4. Both derive Session Keys  │
+  │     (Symmetric Keys)          │
+  │<─────────────────────────────>│
+  │                               │
+  │  5. Encrypted Communication   │
+  │     using Session Keys        │
+  │<═════════════════════════════>│
+```
+
+**HTTPS uses both:**
+
+- **Asymmetric encryption** (RSA, ECDSA) for initial handshake
+- **Symmetric encryption** (AES) for actual data transfer
+
+### JWT Cryptography
+
+JWT can use different algorithms:
+
+```
+┌─────────────────────────────────────────┐
+│             JWT Structure               │
+├─────────────────────────────────────────┤
+│  Header.Payload.Signature               │
+│                                         │
+│  Header:  {"alg": "HS256", "typ": "JWT"}│
+│  Payload: {"userId": 123, "exp": ...}  │
+│  Signature: HMACSHA256(                 │
+│    base64(header) + "." +               │
+│    base64(payload),                     │
+│    secret                               │
+│  )                                      │
+└─────────────────────────────────────────┘
+```
+
+**JWT Signing Methods:**
+
+1. **Symmetric (HMAC)** - HS256, HS384, HS512:
+   ```
+   Server                    Server
+     │                        │
+     │  Sign with Secret      │  Verify with Same Secret
+     │  ────────────>         │  <────────────
+     │                        │
+   ```
+
+2. **Asymmetric (RSA/ECDSA)** - RS256, ES256:
+   ```
+   Server                    Client/Server
+     │                        │
+     │  Sign with Private Key │  Verify with Public Key
+     │  ────────────>         │  <────────────
+     │                        │
+   ```
+
+## Complete Flow Example
+
+Here's how JWT typically works with HTTPS:
+
+```
+Client                                    Server
+  │                                         │
+  │  1. Login Request (HTTPS)               │
+  │     POST /login                         │
+  │     {username, password}                │
+  ├────────────────────────────────────────>│
+  │         ↑                               │
+  │    [HTTPS Encryption]                   │
+  │                                         │
+  │  2. Generate JWT                        │
+  │     Sign with Secret/Private Key        │
+  │                                         │
+  │  3. Login Response (HTTPS)              │
+  │     {token: "eyJhbG..."}               │
+  │<────────────────────────────────────────┤
+  │         ↑                               │
+  │    [HTTPS Encryption]                   │
+  │                                         │
+  │  4. API Request (HTTPS)                 │
+  │     GET /api/data                       │
+  │     Authorization: Bearer eyJhbG...     │
+  ├────────────────────────────────────────>│
+  │         ↑                               │
+  │    [HTTPS Encryption]                   │
+  │                                         │
+  │  5. Verify JWT Signature                │
+  │     Check Expiration                    │
+  │     Process Request                     │
+  │                                         │
+  │  6. API Response (HTTPS)                │
+  │     {data: {...}}                       │
+  │<────────────────────────────────────────┤
+```
+
+## Key Takeaways
+
+1. **HTTPS** provides transport-level encryption for ALL data in transit
+2. **JWT** provides application-level authentication/authorization
+3. They complement each other - JWT for "who you are", HTTPS for "secure transport"
+4. Both can use symmetric and asymmetric cryptography, but for different purposes
+5. Best practice: Always send JWT over HTTPS to prevent token theft
