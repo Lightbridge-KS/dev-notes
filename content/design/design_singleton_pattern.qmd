@@ -1,0 +1,131 @@
+# Singleton Pattern
+
+::: {.callout-note appearance="simple" collapse="false"}
+**Q:** I've encountered concept called "Singleton Pattern" through this Dart code: `RamaaiService._()`.
+
+Please explain the concept and why it is useful:
+
+
+```dart
+class RamaaiService {
+  RamaAiClient? _client;
+  static RamaaiService? _instance;
+
+  RamaaiService._();
+
+  /// Get singleton instance
+  static RamaaiService get instance {
+    _instance ??= RamaaiService._();
+    return _instance!;
+  }
+}
+```
+:::
+
+
+The Singleton Pattern is a design pattern that ensures a class has only one instance throughout the application's lifetime and provides a global point of access to that instance.
+
+## Understanding the Code
+
+Let me break down your Dart example:
+
+```
+Class Structure:
+┌─────────────────────────────┐
+│       RamaaiService         │
+├─────────────────────────────┤
+│ - _client: RamaAiClient?    │ ← Instance variable
+│ - _instance: static         │ ← Holds the single instance
+├─────────────────────────────┤
+│ - RamaaiService._()         │ ← Private constructor
+│ + instance: static getter   │ ← Public access point
+└─────────────────────────────┘
+```
+
+**Key Components:**
+
+- `RamaaiService._()` - Private constructor (the underscore makes it private in Dart)
+- `_instance` - Static variable that holds the single instance
+- `instance` getter - Public method to access the singleton
+
+**Flow Diagram:**
+
+```
+First Call:
+User → instance getter → _instance is null? → Create new RamaaiService._() → Store in _instance → Return instance
+
+Subsequent Calls:
+User → instance getter → _instance exists? → Return existing instance
+```
+
+## Why Singleton is Useful
+
+**Resource Management:**
+
+- Ensures expensive resources (like database connections, API clients) are created only once
+- Prevents memory waste from multiple identical objects
+
+**Global State:**
+
+- Provides a single point of truth for shared data
+- Ensures consistency across your application
+
+**Coordination:**
+
+- Perfect for services that coordinate activities (logging, configuration, caching)
+
+## Python Equivalent
+
+Since you prefer Python, here's how you'd implement the same pattern:
+
+```python
+class RamaaiService:
+    _instance = None
+    _client = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
+        return cls._instance
+```
+
+## Real-World Medical AI Example
+
+In your radiology AI context, you might use Singleton for:
+
+```python
+class DicomProcessor:
+    _instance = None
+    _model = None  # Expensive ML model
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._load_ai_model()  # Load once
+        return cls._instance
+    
+    def _load_ai_model(self):
+        # Load heavy AI model (time-consuming)
+        self._model = load_radiology_ai_model()
+    
+    def process_dicom(self, dicom_file):
+        return self._model.predict(dicom_file)
+```
+
+This ensures your expensive AI model loads only once, regardless of how many times you need to process DICOM files throughout your application.
+
+**When to Use Singleton:**
+
+- Database connections
+- Configuration managers
+- Logging services
+- AI model instances (as in your case)
+- Cache managers
+
+**Simple Rule:** If creating multiple instances would waste resources or cause inconsistency, consider Singleton.
