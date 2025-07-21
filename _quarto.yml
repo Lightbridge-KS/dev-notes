@@ -27,6 +27,9 @@ book:
         - "content/backend/ssh-overview.qmd"
         - "content/backend/ssh-intro.qmd"
         - "content/backend/ssh-vscode.qmd"
+    - part: Client
+      chapters: 
+        - "content/storage/web-client-storage.qmd"
     - part: Crypto
       chapters: 
         - "content/crypto/https-jwt.qmd"
