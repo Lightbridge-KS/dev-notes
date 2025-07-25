@@ -36,6 +36,9 @@ book:
     - part: File system
       chapters: 
         - "content/fs/download-file.ipynb"
+    - part: Firebase
+      chapters: 
+        - "content/firebase/firebase-flutter-hosting.qmd"
 
 bibliography: references.bib
 
