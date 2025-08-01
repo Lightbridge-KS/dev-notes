@@ -1,0 +1,140 @@
+# Semantic Versioning (Practical)
+
+## Overview
+
+Semantic Versioning (SemVer) uses a three-part version number: **MAJOR.MINOR.PATCH**
+
+### Version Number Rules
+
+**MAJOR.MINOR.PATCH** (e.g., 2.1.3)
+
+- **MAJOR**: Breaking changes that are incompatible with previous versions
+- **MINOR**: New features that are backward-compatible  
+- **PATCH**: Bug fixes that are backward-compatible
+
+### Additional Labels
+
+- **Pre-release**: `1.0.0-alpha.1`, `1.0.0-beta.2`, `1.0.0-rc.1`
+- **Build metadata**: `1.0.0+20130313144700` (ignored in precedence)
+
+### Version Precedence
+
+```
+1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta 
+< 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0
+```
+
+## Recommended Versioning Strategy for Your Flutter App
+
+### Development Stage Versioning
+
+**Local Development:**
+```yaml
+# pubspec.yaml - placeholder (gets overridden by CI)
+version: 0.0.0+0
+```
+
+**Feature Branches (no releases):**
+- Don't create tags
+- CI builds without version updates
+- Artifacts: `onsite-web-build-localhost.zip`
+
+### Pre-Production Releases
+
+**Alpha Releases (internal testing):**
+```bash
+git tag v1.0.0-alpha.1
+git tag v1.0.0-alpha.2
+```
+- Use: Early internal testing
+- Features: Incomplete, may have major bugs
+- Audience: Development team only
+
+**Beta Releases (stakeholder testing):**
+```bash
+git tag v1.0.0-beta.1  
+git tag v1.0.0-beta.2
+```
+- Use: Feature-complete testing
+- Features: All major features done, minor bugs expected
+- Audience: QA team, key stakeholders, radiologists in your unit
+
+**Release Candidates (pre-production):**
+```bash
+git tag v1.0.0-rc.1
+git tag v1.0.0-rc.2  
+```
+- Use: Final testing before production
+- Features: Production-ready, only critical bugs fixed
+- Audience: Final user acceptance testing
+
+### Production Releases
+
+**Initial Release:**
+```bash
+git tag v1.0.0
+```
+
+**Patch Updates (bug fixes):**
+```bash
+git tag v1.0.1  # Fixed login bug
+git tag v1.0.2  # Fixed DICOM parsing issue
+```
+
+**Minor Updates (new features):**
+```bash
+git tag v1.1.0  # Added new AI analysis tool
+git tag v1.2.0  # Added report export feature
+```
+
+**Major Updates (breaking changes):**
+```bash
+git tag v2.0.0  # Complete UI redesign
+git tag v3.0.0  # New API architecture
+```
+
+## Practical Versioning Timeline for Your Radiology App
+
+```
+Development Phase:
+├── v0.1.0-alpha.1    # Basic DICOM viewer
+├── v0.1.0-alpha.2    # Added basic AI integration
+├── v0.2.0-beta.1     # Feature-complete beta
+├── v0.2.0-beta.2     # Bug fixes
+├── v0.2.0-rc.1       # Release candidate
+└── v1.0.0            # Production release
+
+Production Phase:
+├── v1.0.1            # Hot fix for critical bug
+├── v1.1.0            # New AI model integration
+├── v1.1.1            # Performance improvements
+├── v1.2.0            # Multi-language support
+└── v2.0.0            # Complete architecture change
+```
+
+## GitHub Release Strategy
+
+### Pre-release Checkbox Usage
+
+- **Check "Pre-release"** for: alpha, beta, rc versions
+- **Uncheck "Pre-release"** for: stable production versions
+
+### Branch Strategy Integration
+
+```
+main branch     → v1.0.0, v1.0.1, v1.1.0 (stable releases)
+dev/v1.1        → v1.1.0-beta.1, v1.1.0-rc.1 (pre-releases)  
+hotfix/urgent   → v1.0.1 (patch releases)
+```
+
+## For Your Medical Software Context
+
+Given you're working in healthcare with AI:
+
+- **Start with v0.x.x** during development (signals not production-ready)
+- **Use v1.0.0** only when clinically validated and hospital-approved
+- **Patch versions** for critical bug fixes (patient safety issues)
+- **Minor versions** for new AI models or analysis features
+- **Major versions** for significant workflow changes
+
+This approach ensures clear communication about software maturity, which is crucial in medical environments! 🏥

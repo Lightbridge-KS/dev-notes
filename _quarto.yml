@@ -39,6 +39,9 @@ book:
     - part: Firebase
       chapters: 
         - "content/firebase/firebase-flutter-hosting.qmd"
+    - part: Versioning
+      chapters: 
+        - "content/version/semver-practical.qmd"
 
 bibliography: references.bib
 
