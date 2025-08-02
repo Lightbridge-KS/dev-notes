@@ -1,0 +1,116 @@
+# Host and Port
+
+## Local FAST API
+
+For serving your FastAPI application to other client applications on the same computer, you should use:
+
+**Host and Port Configuration:**
+
+- **Host**: `127.0.0.1` (localhost) or `0.0.0.0`
+- **Port**: Any available port above 1024 (common choices: 8000, 8080, 3000, 5000)
+
+**Recommended Setup:**
+
+```python
+# In your FastAPI app
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+```
+
+Or via command line:
+
+```bash
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**Host Options Explained:**
+
+- `127.0.0.1` (localhost): Only accessible from the same machine
+- `0.0.0.0`: Binds to all available network interfaces (allows external access if needed)
+
+**Port Considerations:**
+
+- Ports 1-1023 are reserved for system services
+- Common development ports: 8000 (FastAPI default), 8080, 3000, 5000
+- Check if port is available: `lsof -i :8000`
+
+**Client Connection:**
+
+Your client applications would connect to:
+```
+http://127.0.0.1:8000
+# or
+http://localhost:8000
+```
+
+**Network Diagram:**
+```
+┌─────────────────┐    HTTP Request     ┌─────────────────┐
+│   Client App    │ ──────────────────► │   FastAPI       │
+│ (Same Computer) │                     │   Server        │
+│                 │ ◄────────────────── │ 127.0.0.1:8000  │
+└─────────────────┘    HTTP Response    └─────────────────┘
+```
+
+## `0.0.0.0`
+
+
+The key difference between `0.0.0.0` and `localhost` lies in **network interface binding** and **accessibility scope**:
+
+**`localhost` (127.0.0.1):**
+
+- Binds only to the **loopback interface**
+- Only accessible from the **same machine**
+- Traffic never leaves your computer
+- More secure for development
+
+**`0.0.0.0`:**
+
+- Binds to **all available network interfaces**
+- Accessible from **other devices on the network**
+- Listens on all IP addresses assigned to your machine
+- Less secure but more flexible
+
+**Network Interface Comparison:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Your MacBook Pro                         │
+│                                                             │
+│  127.0.0.1 (loopback)      │     192.168.1.100 (WiFi)      │
+│         │                  │              │                 │
+│         ▼                  │              ▼                 │
+│  ┌─────────────┐          │      ┌─────────────┐           │
+│  │localhost    │          │      │Network      │           │
+│  │binding      │          │      │binding      │           │
+│  └─────────────┘          │      └─────────────┘           │
+│         │                  │              │                 │
+│         ▼                  │              ▼                 │
+│  Only local apps           │      External devices          │
+│  can connect               │      can connect               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Practical Examples:**
+
+**With `localhost:8000`:**
+- ✅ Your browser: `http://localhost:8000`
+- ✅ Your Python client on same machine
+- ❌ Your iPhone on same WiFi network
+- ❌ Another computer on your network
+
+**With `0.0.0.0:8000`:**
+- ✅ Your browser: `http://localhost:8000`
+- ✅ Your Python client on same machine  
+- ✅ Your iPhone: `http://192.168.1.100:8000`
+- ✅ Another computer: `http://192.168.1.100:8000`
+
+**Security Implications:**
+
+- `localhost`: Firewall automatically blocks external access
+- `0.0.0.0`: Your API becomes **publicly accessible** on your network (potential security risk)
+
+**Best Practice:**
+
+Use `localhost` for development, `0.0.0.0` only when you need network access for testing mobile apps or other devices.
