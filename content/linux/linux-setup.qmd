@@ -1,0 +1,72 @@
+# Linux Setup
+
+## Git Config
+
+## Step 1: Configure Git Identity
+
+Set up the same identity you use on your MacBook:
+
+```bash
+git config --global user.name "user-name"
+git config --global user.email "example@gmail.com"
+```
+
+## Step 2: Configure Core Settings
+
+```bash
+# If VS Code is available on the server
+git config --global core.editor "code --wait"
+# If you prefer a simpler editor
+git config --global core.editor "nano"
+
+# Handle line endings properly (same as your MacBook)
+git config --global core.autocrlf input
+
+# Increase buffer for large files (same as your MacBook)
+git config --global http.postbuffer 524288000
+```
+
+## Step 3: Authentication Strategy
+
+Since you're on a shared server without admin privileges, you have two good options:
+
+### Option A: Personal Access Token (Recommended for shared servers)
+
+```bash
+# Cache credentials for 8 hours (safer on shared server)
+git config --global credential.helper 'cache --timeout=28800'
+```
+
+### Option B: SSH Keys (More Secure, If You Prefer)
+
+Since other users can't access your home folder, SSH keys are secure:
+
+```bash
+# Generate SSH key (if you don't have one)
+ssh-keygen -t ed25519 -C "example@gmail.com"
+# Press Enter for default location (~/.ssh/id_ed25519)
+# Set a passphrase for extra security
+
+# Display public key to add to GitHub
+cat ~/.ssh/id_ed25519.pub
+```
+
+Then add this public key to GitHub: Settings → SSH and GPG keys → New SSH key
+
+## Step 4: Security Configuration for Shared Server
+
+```bash
+# Set stricter permissions on your home directory (just to be safe)
+chmod 700 ~/
+
+# If using SSH keys, secure the .ssh directory
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/id_ed25519      # private key
+chmod 644 ~/.ssh/id_ed25519.pub  # public key
+```
+
+## Step 6: Verify Configuration
+
+```bash
+git config --list
+```

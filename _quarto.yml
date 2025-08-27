@@ -45,6 +45,9 @@ book:
     - part: Versioning
       chapters: 
         - "content/version/semver-practical.qmd"
+    - part: Linux
+      chapters: 
+        - "content/linux/linux-setup.qmd"
 
 bibliography: references.bib
 
