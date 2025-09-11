@@ -48,6 +48,9 @@ book:
     - part: Linux
       chapters: 
         - "content/linux/linux-setup.qmd"
+    - part: SSH
+      chapters: 
+        - "content/ssh/ssh-port-forwarding.qmd"
 
 bibliography: references.bib
 
