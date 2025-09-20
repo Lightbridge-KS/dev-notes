@@ -51,6 +51,10 @@ book:
     - part: SSH
       chapters: 
         - "content/ssh/ssh-port-forwarding.qmd"
+    - part: Network
+      chapters: 
+        - "content/network/gRPC.qmd"
+        - "content/network/gRPC-vs-REST.qmd"
 
 bibliography: references.bib
 

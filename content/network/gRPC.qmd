@@ -1,0 +1,833 @@
+# RPC
+
+RPC (Remote Procedure Call) is a fundamental networking concept that allows a program to execute code on a remote system as if it were calling a local function. Think of it as a way to make distributed computing feel like local computing.
+
+## Basic
+
+### Understanding RPC Through Analogy
+
+Imagine you're working in a hospital and need to request a specific medical image analysis from a specialized AI unit in another building. Instead of walking there yourself, you pick up the phone, describe exactly what you need, wait for the analysis, and receive the results back. RPC works similarly - your local program "calls" a remote service, sends the necessary data, and receives the processed results.
+
+### How RPC Works
+
+Here's the fundamental flow of an RPC call:
+
+```
+Client Program          Network          Server Program
+     |                     |                     |
+     |-- Function Call --→ |                     |
+     |                     |-- Request Packet --→|
+     |                     |                     |-- Execute Function
+     |                     |                     |
+     |                     |←-- Response Packet --|
+     |←-- Return Value --- |                     |
+```
+
+The beauty of RPC lies in its transparency. The client code looks almost identical to a local function call, but the RPC framework handles all the complex networking details behind the scenes.
+
+### Key Components of RPC
+
+**Stub Functions**: These act as local representatives of remote functions. When you call an RPC function, you're actually calling a stub that packages your parameters and sends them across the network.
+
+**Marshalling/Unmarshalling**: This process converts your function parameters into a format suitable for network transmission (marshalling) and converts the received data back into usable objects (unmarshalling).
+
+**Transport Layer**: This handles the actual network communication, typically using protocols like HTTP, TCP, or specialized RPC protocols.
+
+### Simple Python Example
+
+Let me show you a practical example using Python's built-in `xmlrpc` library. This demonstrates both the server and client sides:
+
+**Server Side (rpc_server.py):**
+```python
+from xmlrpc.server import SimpleXMLRPCServer
+import time
+
+def calculate_bmi(weight_kg, height_m):
+    """Calculate BMI given weight in kg and height in meters"""
+    if height_m <= 0:
+        raise ValueError("Height must be positive")
+    
+    bmi = weight_kg / (height_m ** 2)
+    return round(bmi, 2)
+
+def get_server_time():
+    """Return current server timestamp"""
+    return time.strftime("%Y-%m-%d %H:%M:%S")
+
+def analyze_medical_data(patient_id, test_values):
+    """Simulate medical data analysis"""
+    # Simulate some processing time
+    time.sleep(1)
+    
+    # Simple analysis logic
+    average = sum(test_values) / len(test_values)
+    status = "normal" if 80 <= average <= 120 else "abnormal"
+    
+    return {
+        "patient_id": patient_id,
+        "average_value": round(average, 2),
+        "status": status,
+        "analyzed_at": time.strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+if __name__ == "__main__":
+    # Create server instance
+    server = SimpleXMLRPCServer(("localhost", 8000))
+    print("RPC Server listening on port 8000...")
+    
+    # Register functions to be available via RPC
+    server.register_function(calculate_bmi, "calculate_bmi")
+    server.register_function(get_server_time, "get_server_time")
+    server.register_function(analyze_medical_data, "analyze_medical_data")
+    
+    # Start the server
+    server.serve_forever()
+```
+
+**Client Side (rpc_client.py):**
+```python
+import xmlrpc.client
+
+def main():
+    # Connect to the RPC server
+    server = xmlrpc.client.ServerProxy("http://localhost:8000/")
+    
+    try:
+        # Call remote functions as if they were local
+        print("=== RPC Client Demo ===\n")
+        
+        # Get server time
+        server_time = server.get_server_time()
+        print(f"Server time: {server_time}")
+        
+        # Calculate BMI remotely
+        weight = 70.5  # kg
+        height = 1.75  # meters
+        bmi = server.calculate_bmi(weight, height)
+        print(f"BMI calculation: {weight}kg, {height}m → BMI: {bmi}")
+        
+        # Analyze medical data
+        patient_data = [95, 102, 88, 91, 105, 98]
+        analysis = server.analyze_medical_data("PATIENT_001", patient_data)
+        
+        print(f"\nMedical Analysis Results:")
+        print(f"Patient ID: {analysis['patient_id']}")
+        print(f"Average Value: {analysis['average_value']}")
+        print(f"Status: {analysis['status']}")
+        print(f"Analyzed at: {analysis['analyzed_at']}")
+        
+    except Exception as e:
+        print(f"RPC Error: {e}")
+
+if __name__ == "__main__":
+    main()
+```
+
+**Running the Example**
+
+To see this in action, you would:
+
+1. Start the server: `python rpc_server.py`
+2. In another terminal, run the client: `python rpc_client.py`
+
+The client will make remote calls that appear as local function calls, but the actual computation happens on the server.
+
+### Real-World Applications in Medical Imaging
+
+In your radiology AI context, RPC is particularly valuable for:
+
+**Distributed AI Processing**: Your local workstation can send DICOM images to a powerful GPU cluster for AI analysis via RPC calls.
+
+**Microservices Architecture**: Different AI models (CT analysis, MRI processing, report generation) can run as separate RPC services.
+
+**Load Balancing**: Multiple AI processing servers can handle requests through RPC, distributing the computational load.
+
+### Advantages and Considerations
+
+RPC provides **location transparency** - you don't need to worry about where the remote service is running. It offers **language independence** - the client and server can be written in different programming languages. The **familiar programming model** makes it easy to convert local applications to distributed ones.
+
+However, you should consider that **network failures** can cause RPC calls to fail, unlike local function calls. There's **performance overhead** from network communication and data serialization. **Debugging** can be more complex since errors might occur on remote systems.
+
+Understanding RPC gives you a solid foundation for exploring more advanced distributed computing concepts like REST APIs, gRPC, and message queuing systems. Each builds upon the core idea of making remote resources accessible through familiar programming interfaces.
+
+## gRPC
+
+gRPC represents a significant evolution in the RPC paradigm that addresses many of the limitations we saw in our previous examples. Think of it as RPC that has been redesigned from the ground up with modern distributed systems in mind.
+
+## Understanding gRPC Through the Lens of Traditional RPC
+
+Let's start by understanding what gRPC is by comparing it to the traditional RPC approaches we just explored. In our previous examples, we used JSON-RPC, which while functional, has some inherent limitations. JSON is human-readable and language-agnostic, but it's also verbose and requires parsing overhead. The schema is implicit, meaning there's no formal contract defining what data structures should look like. Error handling is basic, and there's limited support for advanced features like streaming or metadata.
+
+gRPC, which stands for "gRPC Remote Procedure Calls" (originally "Google RPC"), addresses these challenges by building on top of HTTP/2 and using Protocol Buffers (protobuf) as its interface definition language and serialization format. This might sound like just technical jargon, but each of these choices solves real problems you encounter when building distributed systems at scale.
+
+### The Foundation: Protocol Buffers
+
+To truly understand gRPC, we need to first understand Protocol Buffers. Think of protobuf as a strongly-typed contract between your services. Instead of sending loosely-structured JSON where you hope the other side interprets your data correctly, protobuf defines exactly what your data should look like, what types each field should have, and how the data should be serialized.
+
+Here's how we might define our medical service using protobuf. This goes in a file called `medical.proto`:
+
+```protobuf
+// Protocol Buffer definition for our medical service
+syntax = "proto3";
+
+package medical;
+
+// Option to specify Go package name
+option go_package = "./medical";
+
+// Request message for BMI calculation
+// Notice how we explicitly define types and field numbers
+message BMIRequest {
+  double weight_kg = 1;    // Field number 1: weight in kilograms
+  double height_m = 2;     // Field number 2: height in meters
+}
+
+// Response message for BMI calculation
+message BMIResponse {
+  double bmi = 1;          // The calculated BMI value
+  string category = 2;     // BMI category (underweight, normal, overweight, obese)
+}
+
+// Request message for medical data analysis
+message AnalysisRequest {
+  string patient_id = 1;                // Unique patient identifier
+  repeated double test_values = 2;      // Array of test values
+  string test_type = 3;                 // Type of medical test
+}
+
+// Response message for analysis results
+message AnalysisResponse {
+  string patient_id = 1;        // Patient ID from request
+  double average_value = 2;     // Calculated average
+  string status = 3;           // Analysis status
+  string analyzed_at = 4;      // Timestamp of analysis
+  repeated string recommendations = 5;  // Medical recommendations
+}
+
+// Empty message for requests that don't need parameters
+message Empty {}
+
+// Server time response
+message TimeResponse {
+  string server_time = 1;
+  string timezone = 2;
+}
+
+// The actual service definition
+// This defines the contract - what methods are available and their signatures
+service MedicalService {
+  // Calculate BMI for a patient
+  rpc CalculateBMI(BMIRequest) returns (BMIResponse);
+  
+  // Get current server time
+  rpc GetServerTime(Empty) returns (TimeResponse);
+  
+  // Analyze medical test data
+  rpc AnalyzeMedicalData(AnalysisRequest) returns (AnalysisResponse);
+  
+  // Streaming example: real-time monitoring data
+  rpc StreamVitalSigns(Empty) returns (stream VitalSignReading);
+  
+  // Bidirectional streaming: interactive consultation
+  rpc InteractiveConsultation(stream ConsultationMessage) returns (stream ConsultationResponse);
+}
+
+// Additional messages for streaming examples
+message VitalSignReading {
+  string patient_id = 1;
+  double heart_rate = 2;
+  double blood_pressure_systolic = 3;
+  double blood_pressure_diastolic = 4;
+  double temperature = 5;
+  string timestamp = 6;
+}
+
+message ConsultationMessage {
+  string message_id = 1;
+  string patient_id = 2;
+  string message_content = 3;
+  string sender_role = 4;  // "doctor", "nurse", "ai_assistant"
+}
+
+message ConsultationResponse {
+  string response_id = 1;
+  string original_message_id = 2;
+  string response_content = 3;
+  repeated string suggested_actions = 4;
+}
+```
+
+What makes this protobuf definition so powerful? First, it's language-agnostic. From this single definition, we can generate client and server code in Go, TypeScript, Python, Java, C++, and many other languages. Second, it's strongly typed, which means we catch type mismatches at compile time rather than runtime. Third, it's versioned and backward-compatible, so we can evolve our API without breaking existing clients.
+
+### HTTP/2: The Transport Layer Advantage
+
+gRPC builds on HTTP/2, which brings several critical improvements over HTTP/1.1 that we used in our JSON-RPC example. HTTP/2 supports multiplexing, meaning multiple requests can be sent over a single connection without blocking each other. It includes built-in compression to reduce bandwidth usage. It supports server push and bidirectional streaming, which enables real-time communication patterns that would be difficult or impossible with traditional HTTP/1.1.
+
+In the context of medical applications, imagine monitoring multiple patients' vital signs simultaneously. With traditional HTTP, you might need to poll each patient's data separately, creating multiple connections and introducing latency. With gRPC over HTTP/2, you can stream all patients' data over a single connection efficiently.
+
+### Building Our Medical Service with gRPC
+
+Now let's implement our medical service using gRPC. The process involves several steps, but once you understand the pattern, it becomes quite intuitive.
+
+First, let's implement the Go server. After generating the protobuf code (which I'll show you how to do), here's our server implementation:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"math"
+	"net"
+	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	
+	// Import the generated protobuf code
+	pb "your-module/medical"
+)
+
+// MedicalServer implements the MedicalService interface generated from our protobuf
+type MedicalServer struct {
+	pb.UnimplementedMedicalServiceServer  // Embedded to ensure forward compatibility
+}
+
+// CalculateBMI implements the BMI calculation with enhanced logic
+func (s *MedicalServer) CalculateBMI(ctx context.Context, req *pb.BMIRequest) (*pb.BMIResponse, error) {
+	// Input validation with gRPC status codes
+	if req.HeightM <= 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "height must be positive, got: %f", req.HeightM)
+	}
+	if req.WeightKg <= 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "weight must be positive, got: %f", req.WeightKg)
+	}
+
+	// Calculate BMI
+	bmi := req.WeightKg / math.Pow(req.HeightM, 2)
+	bmi = math.Round(bmi*100) / 100
+
+	// Determine BMI category based on medical standards
+	var category string
+	switch {
+	case bmi < 18.5:
+		category = "underweight"
+	case bmi < 25:
+		category = "normal"
+	case bmi < 30:
+		category = "overweight"
+	default:
+		category = "obese"
+	}
+
+	log.Printf("BMI calculated for patient: %.1fkg, %.2fm → BMI: %.2f (%s)", 
+		req.WeightKg, req.HeightM, bmi, category)
+
+	return &pb.BMIResponse{
+		Bmi:      bmi,
+		Category: category,
+	}, nil
+}
+
+// GetServerTime returns current server time with timezone information
+func (s *MedicalServer) GetServerTime(ctx context.Context, req *pb.Empty) (*pb.TimeResponse, error) {
+	now := time.Now()
+	
+	return &pb.TimeResponse{
+		ServerTime: now.Format("2006-01-02 15:04:05"),
+		Timezone:   now.Location().String(),
+	}, nil
+}
+
+// AnalyzeMedicalData performs comprehensive analysis of medical test data
+func (s *MedicalServer) AnalyzeMedicalData(ctx context.Context, req *pb.AnalysisRequest) (*pb.AnalysisResponse, error) {
+	// Validate input
+	if req.PatientId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "patient_id is required")
+	}
+	if len(req.TestValues) == 0 {
+		return nil, status.Errorf(codes.InvalidArgument, "test_values cannot be empty")
+	}
+
+	log.Printf("Analyzing %s data for patient %s with %d values", 
+		req.TestType, req.PatientId, len(req.TestValues))
+
+	// Simulate processing time (AI model inference)
+	time.Sleep(500 * time.Millisecond)
+
+	// Calculate statistics
+	var sum float64
+	for _, value := range req.TestValues {
+		sum += value
+	}
+	average := sum / float64(len(req.TestValues))
+	average = math.Round(average*100) / 100
+
+	// Determine status and generate recommendations
+	var status string
+	var recommendations []string
+
+	switch req.TestType {
+	case "blood_glucose":
+		switch {
+		case average < 70:
+			status = "hypoglycemia"
+			recommendations = append(recommendations, "Consider glucose administration", "Monitor closely")
+		case average <= 100:
+			status = "normal"
+			recommendations = append(recommendations, "Continue current management")
+		case average <= 125:
+			status = "prediabetes"
+			recommendations = append(recommendations, "Lifestyle modifications recommended", "Follow-up in 3 months")
+		default:
+			status = "diabetes"
+			recommendations = append(recommendations, "Consult endocrinologist", "Begin diabetes management protocol")
+		}
+	default:
+		// Generic analysis
+		if average >= 80 && average <= 120 {
+			status = "normal"
+			recommendations = append(recommendations, "Values within normal range")
+		} else {
+			status = "abnormal"
+			recommendations = append(recommendations, "Further evaluation recommended")
+		}
+	}
+
+	return &pb.AnalysisResponse{
+		PatientId:       req.PatientId,
+		AverageValue:    average,
+		Status:          status,
+		AnalyzedAt:      time.Now().Format("2006-01-02 15:04:05"),
+		Recommendations: recommendations,
+	}, nil
+}
+
+// StreamVitalSigns demonstrates server-side streaming
+func (s *MedicalServer) StreamVitalSigns(req *pb.Empty, stream pb.MedicalService_StreamVitalSignsServer) error {
+	log.Println("Starting vital signs streaming...")
+
+	// Simulate streaming vital signs for multiple patients
+	patients := []string{"PATIENT_001", "PATIENT_002", "PATIENT_003"}
+
+	for i := 0; i < 10; i++ { // Stream 10 readings
+		for _, patientId := range patients {
+			// Simulate realistic vital signs with some variation
+			reading := &pb.VitalSignReading{
+				PatientId:                patientId,
+				HeartRate:               float64(70 + (i%20) - 10), // 60-90 range
+				BloodPressureSystolic:    float64(120 + (i%10) - 5), // 115-125 range
+				BloodPressureDiastolic:   float64(80 + (i%6) - 3),   // 77-83 range
+				Temperature:             36.5 + float64(i%4)*0.1,    // 36.5-36.8 range
+				Timestamp:               time.Now().Format("2006-01-02 15:04:05"),
+			}
+
+			// Send the reading to the client
+			if err := stream.Send(reading); err != nil {
+				log.Printf("Error sending vital signs: %v", err)
+				return err
+			}
+
+			// Small delay to simulate real-time monitoring
+			time.Sleep(100 * time.Millisecond)
+		}
+		
+		// Pause between rounds of readings
+		time.Sleep(2 * time.Second)
+	}
+
+	log.Println("Vital signs streaming completed")
+	return nil
+}
+
+// InteractiveConsultation demonstrates bidirectional streaming
+func (s *MedicalServer) InteractiveConsultation(stream pb.MedicalService_InteractiveConsultationServer) error {
+	log.Println("Starting interactive consultation session...")
+
+	for {
+		// Receive message from client
+		message, err := stream.Recv()
+		if err != nil {
+			log.Printf("Consultation session ended: %v", err)
+			return err
+		}
+
+		log.Printf("Received consultation message from %s: %s", 
+			message.SenderRole, message.MessageContent)
+
+		// Process the message and generate AI response
+		var responseContent string
+		var suggestedActions []string
+
+		// Simple AI response simulation based on message content
+		switch {
+		case contains(message.MessageContent, "pain"):
+			responseContent = "Pain assessment indicates need for evaluation. Please describe location, intensity (1-10), and duration."
+			suggestedActions = []string{"Pain scale assessment", "Physical examination", "Consider imaging if severe"}
+		case contains(message.MessageContent, "fever"):
+			responseContent = "Elevated temperature noted. Monitoring vital signs and potential infectious causes recommended."
+			suggestedActions = []string{"Temperature monitoring", "Blood work", "Infection screening"}
+		default:
+			responseContent = "Thank you for the information. Please provide additional clinical details for better assessment."
+			suggestedActions = []string{"Gather more clinical history", "Review patient records"}
+		}
+
+		// Send AI response back to client
+		response := &pb.ConsultationResponse{
+			ResponseId:        fmt.Sprintf("RESP_%d", time.Now().Unix()),
+			OriginalMessageId: message.MessageId,
+			ResponseContent:   responseContent,
+			SuggestedActions:  suggestedActions,
+		}
+
+		if err := stream.Send(response); err != nil {
+			log.Printf("Error sending consultation response: %v", err)
+			return err
+		}
+	}
+}
+
+// Helper function to check if string contains substring
+func contains(text, substr string) bool {
+	return len(text) >= len(substr) && 
+		   (text == substr || 
+			func() bool {
+				for i := 0; i <= len(text)-len(substr); i++ {
+					if text[i:i+len(substr)] == substr {
+						return true
+					}
+				}
+				return false
+			}())
+}
+
+func main() {
+	// Create TCP listener
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
+
+	// Create gRPC server with options
+	s := grpc.NewServer(
+		grpc.MaxRecvMsgSize(4*1024*1024), // 4MB max message size for medical images
+		grpc.MaxSendMsgSize(4*1024*1024), // 4MB max message size
+	)
+
+	// Register our medical service
+	pb.RegisterMedicalServiceServer(s, &MedicalServer{})
+
+	log.Println("gRPC Medical Service starting on :50051...")
+	log.Println("Available services:")
+	log.Println("  - CalculateBMI: Calculate patient BMI with category")
+	log.Println("  - GetServerTime: Get server timestamp")
+	log.Println("  - AnalyzeMedicalData: Analyze test results with recommendations")
+	log.Println("  - StreamVitalSigns: Real-time vital signs streaming")
+	log.Println("  - InteractiveConsultation: Bidirectional AI consultation")
+
+	// Start serving
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
+	}
+}
+```
+
+### TypeScript Client Implementation
+
+Now let's create a TypeScript client that demonstrates the full power of gRPC, including streaming capabilities:
+
+```typescript
+import * as grpc from '@grpc/grpc-js';
+import * as protoLoader from '@grpc/proto-loader';
+import { promisify } from 'util';
+
+// Load the protobuf definition
+const PROTO_PATH = './medical.proto';
+const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
+  keepCase: true,
+  longs: String,
+  enums: String,
+  defaults: true,
+  oneofs: true,
+});
+
+// Create the gRPC service definition
+const medical = grpc.loadPackageDefinition(packageDefinition).medical as any;
+
+/**
+ * MedicalGrpcClient provides a comprehensive interface to our gRPC medical service
+ * This demonstrates the power of gRPC with both unary and streaming operations
+ */
+class MedicalGrpcClient {
+  private client: any;
+
+  constructor(address: string = 'localhost:50051') {
+    // Create gRPC client with insecure credentials for demo
+    // In production, you'd use TLS credentials
+    this.client = new medical.MedicalService(
+      address,
+      grpc.credentials.createInsecure()
+    );
+  }
+
+  /**
+   * Calculate BMI using gRPC unary call
+   * This demonstrates the simplest form of gRPC communication
+   */
+  async calculateBMI(weightKg: number, heightM: number): Promise<any> {
+    const request = {
+      weight_kg: weightKg,
+      height_m: heightM,
+    };
+
+    // Promisify the gRPC call for easier async/await usage
+    const calculateBMI = promisify(this.client.calculateBMI.bind(this.client));
+    
+    try {
+      console.log(`🔄 Calculating BMI for ${weightKg}kg, ${heightM}m...`);
+      const response = await calculateBMI(request);
+      console.log(`✅ BMI calculated: ${response.bmi} (${response.category})`);
+      return response;
+    } catch (error) {
+      console.error('❌ Error calculating BMI:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get server time using gRPC
+   */
+  async getServerTime(): Promise<any> {
+    const getServerTime = promisify(this.client.getServerTime.bind(this.client));
+    
+    try {
+      console.log('🔄 Getting server time...');
+      const response = await getServerTime({});
+      console.log(`✅ Server time: ${response.server_time} (${response.timezone})`);
+      return response;
+    } catch (error) {
+      console.error('❌ Error getting server time:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Analyze medical data with detailed recommendations
+   */
+  async analyzeMedicalData(
+    patientId: string,
+    testValues: number[],
+    testType: string = 'blood_glucose'
+  ): Promise<any> {
+    const request = {
+      patient_id: patientId,
+      test_values: testValues,
+      test_type: testType,
+    };
+
+    const analyzeMedicalData = promisify(this.client.analyzeMedicalData.bind(this.client));
+
+    try {
+      console.log(`🔄 Analyzing ${testType} data for patient ${patientId}...`);
+      const response = await analyzeMedicalData(request);
+      
+      console.log('✅ Analysis completed:');
+      console.log(`   Patient: ${response.patient_id}`);
+      console.log(`   Average: ${response.average_value}`);
+      console.log(`   Status: ${response.status}`);
+      console.log(`   Analyzed at: ${response.analyzed_at}`);
+      console.log(`   Recommendations: ${response.recommendations.join(', ')}`);
+      
+      return response;
+    } catch (error) {
+      console.error('❌ Error analyzing medical data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Stream vital signs data - demonstrates server-side streaming
+   * This shows how gRPC excels at real-time data transmission
+   */
+  async streamVitalSigns(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      console.log('🔄 Starting vital signs streaming...');
+      
+      // Create streaming call
+      const stream = this.client.streamVitalSigns({});
+      
+      let readingCount = 0;
+
+      // Handle incoming data
+      stream.on('data', (reading: any) => {
+        readingCount++;
+        console.log(`📊 Vital Signs #${readingCount}:`);
+        console.log(`   Patient: ${reading.patient_id}`);
+        console.log(`   Heart Rate: ${reading.heart_rate} bpm`);
+        console.log(`   Blood Pressure: ${reading.blood_pressure_systolic}/${reading.blood_pressure_diastolic} mmHg`);
+        console.log(`   Temperature: ${reading.temperature}°C`);
+        console.log(`   Time: ${reading.timestamp}\n`);
+      });
+
+      // Handle stream end
+      stream.on('end', () => {
+        console.log(`✅ Vital signs streaming completed. Received ${readingCount} readings.`);
+        resolve();
+      });
+
+      // Handle errors
+      stream.on('error', (error: any) => {
+        console.error('❌ Error in vital signs streaming:', error);
+        reject(error);
+      });
+    });
+  }
+
+  /**
+   * Interactive consultation - demonstrates bidirectional streaming
+   * This shows the most advanced gRPC communication pattern
+   */
+  async interactiveConsultation(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      console.log('🔄 Starting interactive consultation...');
+      
+      // Create bidirectional stream
+      const stream = this.client.interactiveConsultation();
+      
+      // Handle incoming responses from AI
+      stream.on('data', (response: any) => {
+        console.log(`🤖 AI Response to ${response.original_message_id}:`);
+        console.log(`   ${response.response_content}`);
+        if (response.suggested_actions.length > 0) {
+          console.log(`   Suggested Actions: ${response.suggested_actions.join(', ')}`);
+        }
+        console.log('');
+      });
+
+      // Handle stream end
+      stream.on('end', () => {
+        console.log('✅ Interactive consultation session ended.');
+        resolve();
+      });
+
+      // Handle errors
+      stream.on('error', (error: any) => {
+        console.error('❌ Error in consultation:', error);
+        reject(error);
+      });
+
+      // Simulate consultation messages
+      const consultationMessages = [
+        {
+          message_id: 'MSG_001',
+          patient_id: 'PATIENT_001',
+          message_content: 'Patient reports severe chest pain, started 2 hours ago',
+          sender_role: 'doctor'
+        },
+        {
+          message_id: 'MSG_002',
+          patient_id: 'PATIENT_001',
+          message_content: 'Patient has fever of 101.5°F and chills',
+          sender_role: 'nurse'
+        },
+        {
+          message_id: 'MSG_003',
+          patient_id: 'PATIENT_001',
+          message_content: 'Additional symptoms: shortness of breath and nausea',
+          sender_role: 'doctor'
+        }
+      ];
+
+      // Send messages with delays to simulate real conversation
+      let messageIndex = 0;
+      const sendNextMessage = () => {
+        if (messageIndex < consultationMessages.length) {
+          const message = consultationMessages[messageIndex];
+          console.log(`👨‍⚕️ Sending message: ${message.message_content}`);
+          stream.write(message);
+          messageIndex++;
+          
+          // Schedule next message
+          setTimeout(sendNextMessage, 3000);
+        } else {
+          // End the conversation
+          stream.end();
+        }
+      };
+
+      // Start sending messages
+      setTimeout(sendNextMessage, 1000);
+    });
+  }
+
+  /**
+   * Close the gRPC client connection
+   */
+  close(): void {
+    this.client.close();
+  }
+}
+
+/**
+ * Comprehensive demonstration of gRPC medical service capabilities
+ */
+async function demonstrateGrpcMedicalService(): Promise<void> {
+  console.log('🏥 gRPC Medical Service Demo Starting...\n');
+
+  const client = new MedicalGrpcClient();
+
+  try {
+    // Basic unary operations
+    await client.getServerTime();
+    console.log('');
+
+    await client.calculateBMI(70.5, 1.75);
+    console.log('');
+
+    await client.analyzeMedicalData(
+      'PATIENT_001',
+      [95, 102, 88, 91, 105, 98],
+      'blood_glucose'
+    );
+    console.log('');
+
+    // Advanced streaming operations
+    console.log('🌊 Demonstrating server-side streaming...');
+    await client.streamVitalSigns();
+    console.log('');
+
+    console.log('💬 Demonstrating bidirectional streaming...');
+    await client.interactiveConsultation();
+
+    console.log('✅ All gRPC demonstrations completed successfully!');
+
+  } catch (error) {
+    console.error('❌ Demo failed:', error);
+  } finally {
+    client.close();
+  }
+}
+
+// Run the demonstration
+if (require.main === module) {
+  demonstrateGrpcMedicalService();
+}
+
+export { MedicalGrpcClient };
+```
+
+### The Power of gRPC: Why It Matters for Medical Systems
+
+As you work through these examples, you'll notice several key advantages that make gRPC particularly well-suited for medical and healthcare applications.
+
+The type safety provided by Protocol Buffers means that data corruption between services becomes nearly impossible. In medical contexts where wrong data could literally be life-threatening, this compile-time verification is invaluable. The performance characteristics of gRPC, with its binary serialization and HTTP/2 transport, make it ideal for real-time medical monitoring systems where latency matters.
+
+The streaming capabilities open up entirely new architectural possibilities. Imagine a radiology workstation that streams DICOM image analysis results in real-time as an AI model processes different regions of an image. Or consider a patient monitoring system where vital signs from multiple patients stream continuously to a central dashboard, with bidirectional communication allowing medical staff to send commands back to monitoring devices.
+
+### Comparing gRPC to Traditional RPC
+
+Think about the differences between our JSON-RPC example and this gRPC implementation. With JSON-RPC, we had to manually define request and response structures in both languages, hope they stayed in sync, and handle serialization and networking details ourselves. With gRPC, we define our service contract once in protobuf, generate client and server code automatically, and get type safety, efficient serialization, and advanced features like streaming for free.
+
+The error handling in gRPC is also more sophisticated. Instead of generic HTTP status codes, gRPC provides specific error codes that map to common distributed system problems like timeouts, authentication failures, or resource exhaustion. This makes building robust error handling much easier.
