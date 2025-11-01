@@ -24,6 +24,7 @@ book:
         - "content/backend/webservice-02-python.ipynb"
     - part: Web URL
       chapters: 
+        - "content/network/url-anatomy.qmd"
         - "content/backend/host-and-port.qmd"
     - part: Server
       chapters: 

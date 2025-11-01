@@ -1,0 +1,274 @@
+# URL Anatomy - Crash Course
+
+
+A URL (Uniform Resource Locator) is the address system for resources on the internet. Let me break down its components systematically.
+
+
+## Complete URL Structure
+
+
+```
+https://user:pass@api.example.com:8443/v1/patients?id=123&format=json#results
+└─┬─┘   └───┬───┘ └──────┬───────┘└┬─┘ └──────┬──────┘ └────────┬────────┘ └──┬──┘
+scheme  userinfo      host       port      path            query          fragment
+  │         │           │          │         │                │                │
+  └─────────┴───────────┴──────────┴─────────┴────────────────┴────────────────┘
+                            authority                  resource
+```
+
+
+## Scheme (Protocol)
+
+
+```
+https://
+└─┬─┘
+scheme
+```
+
+**Purpose:** Defines the protocol for accessing the resource
+
+**Common schemes:**
+
+- `http://` - Hypertext Transfer Protocol (unencrypted)
+- `https://` - HTTP Secure (encrypted with TLS/SSL)
+- `ftp://` - File Transfer Protocol
+- `ws://` / `wss://` - WebSocket (unencrypted/encrypted)
+- `file://` - Local file system
+- `mailto:` - Email address
+- `tel:` - Telephone number
+
+
+## Authority
+
+
+The authority section contains information about who/where to connect:
+
+```
+user:pass@api.example.com:8443
+└───┬───┘ └──────┬───────┘ └┬─┘
+userinfo      host        port
+```
+
+
+### Userinfo (Optional)
+
+
+```
+user:pass@
+└─┬┘ └┬┘
+user password
+```
+
+**Purpose:** Credentials for authentication (rarely used in modern web, security risk)
+
+**Example:** `ftp://admin:secret@ftp.example.com`
+
+**⚠️ Security Note:** Embedding credentials in URLs is deprecated and insecure. Use proper authentication methods instead.
+
+
+### Host (Required)
+
+
+```
+api.example.com
+│   │      │
+│   │      └── TLD (Top-Level Domain)
+│   └────────── Second-Level Domain
+└────────────── Subdomain
+```
+
+**Can be:**
+
+- **Domain name:** `www.example.com`
+- **IPv4 address:** `http://192.168.1.1`
+- **IPv6 address:** `http://[2001:0db8:85a3::8a2e:0370:7334]`
+
+**Domain hierarchy (right to left):**
+
+```
+pacs.radiology.ramathibodi.ac.th
+ │      │          │        │ │
+ │      │          │        │ └─ TLD (top-level)
+ │      │          │        └─── Second-level
+ │      │          └──────────── Third-level
+ │      └─────────────────────── Fourth-level (subdomain)
+ └────────────────────────────── Fifth-level (subdomain)
+```
+
+
+### Port (Optional)
+
+
+```
+:8443
+ └┬─┘
+ port number
+```
+
+**Purpose:** Specifies which port to connect to on the host
+
+**Default ports (when omitted):**
+
+- `http://` → port 80
+- `https://` → port 443
+- `ftp://` → port 21
+- `ws://` → port 80
+- `wss://` → port 443
+
+**Example:** `https://localhost:3000` (development server)
+
+
+## Path
+
+
+```
+/v1/patients/123/studies
+└┬┘ └──┬───┘ └┬┘ └──┬──┘
+ │     │      │     └──── resource
+ │     │      └────────── ID parameter
+ │     └───────────────── collection
+ └─────────────────────── API version
+```
+
+**Purpose:** Identifies the specific resource on the host
+
+**Characteristics:**
+
+- Hierarchical structure separated by `/`
+- Case-sensitive on most servers
+- Can represent physical file paths or logical routes
+- Empty path defaults to `/`
+
+
+## Query String
+
+
+```
+?id=123&format=json&sort=date
+ └─┬─┘ └─────┬─────┘ └───┬───┘
+   │         │            │
+   └─────────┴────────────┴─── key=value pairs
+```
+
+**Purpose:** Passes parameters to the resource
+
+**Structure:**
+
+- Starts with `?`
+- Multiple parameters separated by `&`
+- Format: `key=value`
+- URL-encoded special characters
+
+**URL Encoding Examples:**
+
+```
+Space       → %20 or +
+&           → %26
+=           → %3D
+?           → %3F
+/           → %2F
+Thai: ก     → %E0%B8%81
+```
+
+
+## Fragment (Hash)
+
+
+```
+#section-results
+ └──────┬─────┘
+     fragment
+```
+
+**Purpose:** Points to a specific section within the resource
+
+**Key characteristics:**
+
+- Starts with `#`
+- **Not sent to server** (client-side only)
+- Used for in-page navigation
+- Used in Single Page Applications (SPA) for routing
+
+
+## Complete Example Analysis
+
+
+Let's analyze a PACS (Picture Archiving and Communication System) URL:
+
+```
+https://admin@pacs.hospital.ac.th:8443/viewer/study/1.2.840.113619?series=1#image-3
+
+├─ https://                    → Secure HTTP protocol
+├─ admin@                      → Username (password omitted)
+├─ pacs.hospital.ac.th         → PACS server hostname
+├─ :8443                       → Custom HTTPS port
+├─ /viewer/study/1.2.840...    → Path to DICOM study viewer
+├─ ?series=1                   → Query: specific series number
+└─ #image-3                    → Fragment: scroll to 3rd image
+```
+
+
+## URL vs URI vs URN
+
+
+```
+                    URI (Uniform Resource Identifier)
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+            URL                             URN
+    (Uniform Resource Locator)    (Uniform Resource Name)
+    "How to access"                   "Name of resource"
+              │                               │
+    https://example.com/file.pdf    urn:isbn:0-486-27557-4
+```
+
+- **URI:** General term for resource identifiers
+- **URL:** URI that specifies location + access method
+- **URN:** URI that provides persistent name (location-independent)
+
+
+## Practical Tips for Medical Imaging Systems
+
+
+### DICOM Web URLs
+
+```
+# WADO (Web Access to DICOM Objects)
+https://pacs.hospital.th/wado?requestType=WADO
+  &studyUID=1.2.840.113619.2.55
+  &seriesUID=1.2.840.113619.2.55.1
+  &objectUID=1.2.840.113619.2.55.1.1
+```
+
+
+### RESTful API for Radiology
+
+```
+GET  https://api.hospital.th/v1/studies           # List studies
+GET  https://api.hospital.th/v1/studies/123       # Get specific study
+POST https://api.hospital.th/v1/studies           # Create study
+PUT  https://api.hospital.th/v1/studies/123       # Update study
+```
+
+
+### Security Considerations
+
+- Always use `https://` for medical data (HIPAA/PDPA compliance)
+- Never embed credentials in URLs
+- Use proper authentication tokens (OAuth, JWT)
+- Validate and sanitize query parameters to prevent injection attacks
+
+
+## Quick Reference
+
+
+| Component | Required | Sent to Server | Example |
+|-----------|----------|----------------|---------|
+| Scheme    | Yes      | Yes            | `https` |
+| Host      | Yes      | Yes            | `example.com` |
+| Port      | No       | Yes            | `:8443` |
+| Path      | No       | Yes            | `/api/data` |
+| Query     | No       | Yes            | `?id=123` |
+| Fragment  | No       | **No**         | `#top` |
