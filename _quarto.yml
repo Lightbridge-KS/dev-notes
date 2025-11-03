@@ -56,6 +56,9 @@ book:
       chapters: 
         - "content/network/gRPC.qmd"
         - "content/network/gRPC-vs-REST.qmd"
+    - part: API
+      chapters: 
+        - "content/api/api-json-table-onerow.qmd"
 
 bibliography: references.bib
 

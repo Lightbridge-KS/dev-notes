@@ -1,0 +1,336 @@
+# JSON Design for Tabular Data in REST APIs
+
+
+## Understanding the Context
+
+
+When designing JSON for tabular data in REST APIs, you need to consider several factors:
+- Single row vs multiple rows
+- Data types and validation
+- Relationships between entities
+- API versioning
+- Client consumption patterns
+
+Let me walk you through the best practices with examples.
+
+
+## Basic Structure for a Single Row
+
+
+For a single row of data, you typically use a flat JSON object. Let's say we have patient examination data:
+
+```json
+{
+  "id": "exam-001",
+  "patientId": "PAT-12345",
+  "patientName": "John Doe",
+  "modality": "CT",
+  "examDate": "2024-01-15T14:30:00Z",
+  "bodyPart": "CHEST",
+  "status": "COMPLETED",
+  "radiologistId": "RAD-789",
+  "findings": "No acute findings"
+}
+```
+
+
+## Best Practices for Field Design
+
+
+### 1. Use Consistent Naming Conventions
+
+
+```json
+{
+  // Good - camelCase (JavaScript/Java standard)
+  "examDate": "2024-01-15",
+  "patientName": "John Doe",
+  
+  // Good - snake_case (Python/Ruby standard)
+  "exam_date": "2024-01-15",
+  "patient_name": "John Doe",
+  
+  // Avoid mixing conventions
+  "exam_date": "2024-01-15",  // snake_case
+  "patientName": "John Doe"    // camelCase - DON'T MIX!
+}
+```
+
+
+### 2. Use ISO 8601 for Dates
+
+
+```json
+{
+  "createdAt": "2024-01-15T14:30:00Z",        // UTC time
+  "scheduledAt": "2024-01-16T09:00:00+07:00"  // Bangkok timezone
+}
+```
+
+
+### 3. Handle Null Values Appropriately
+
+
+```json
+{
+  "id": "exam-001",
+  "findings": null,        // Explicitly null (no findings yet)
+  "reportUrl": null,       // Not available
+  // "archived": missing    // Optional field - omit if not needed
+}
+```
+
+
+## Nested vs Flat Structure
+
+
+```
+Decision Tree for Structure Choice:
+                    
+    [Data Structure?]
+           |
+    ---------------
+    |             |
+[Simple]      [Complex]
+    |             |
+  Flat        Evaluate
+              Nesting
+                 |
+         -----------------
+         |               |
+    [1-to-1]        [1-to-Many]
+         |               |
+    Can Flatten      Must Nest
+```
+
+### Flat Structure (Simple Cases)
+
+
+```json
+{
+  "examId": "exam-001",
+  "patientId": "PAT-12345",
+  "patientName": "John Doe",
+  "patientAge": 45,
+  "radiologistId": "RAD-789",
+  "radiologistName": "Dr. Smith"
+}
+```
+
+
+### Nested Structure (Complex Relationships)
+
+
+```json
+{
+  "id": "exam-001",
+  "patient": {
+    "id": "PAT-12345",
+    "name": "John Doe",
+    "age": 45,
+    "gender": "M"
+  },
+  "radiologist": {
+    "id": "RAD-789",
+    "name": "Dr. Smith",
+    "specialization": "Chest Radiology"
+  },
+  "images": [
+    {
+      "id": "img-001",
+      "seriesNumber": 1,
+      "sopInstanceUID": "1.2.840.113619.2.1.1.1",
+      "url": "/api/images/img-001"
+    },
+    {
+      "id": "img-002",
+      "seriesNumber": 2,
+      "sopInstanceUID": "1.2.840.113619.2.1.1.2",
+      "url": "/api/images/img-002"
+    }
+  ]
+}
+```
+
+
+## Metadata Pattern
+
+
+Include metadata for better API usability:
+
+```json
+{
+  "data": {
+    "id": "exam-001",
+    "patientId": "PAT-12345",
+    "modality": "CT",
+    "examDate": "2024-01-15T14:30:00Z"
+  },
+  "meta": {
+    "version": "1.0",
+    "timestamp": "2024-01-15T16:45:00Z",
+    "requestId": "req-abc123"
+  },
+  "links": {
+    "self": "/api/exams/exam-001",
+    "patient": "/api/patients/PAT-12345",
+    "images": "/api/exams/exam-001/images",
+    "report": "/api/exams/exam-001/report"
+  }
+}
+```
+
+
+## HATEOAS Links for REST Navigation
+
+
+```json
+{
+  "id": "exam-001",
+  "patientId": "PAT-12345",
+  "status": "COMPLETED",
+  "_links": {
+    "self": {
+      "href": "/api/exams/exam-001"
+    },
+    "update": {
+      "href": "/api/exams/exam-001",
+      "method": "PUT"
+    },
+    "report": {
+      "href": "/api/exams/exam-001/report",
+      "method": "GET"
+    },
+    "addendum": {
+      "href": "/api/exams/exam-001/addendum",
+      "method": "POST"
+    }
+  }
+}
+```
+
+
+## Validation and Data Types
+
+
+```json
+{
+  "id": "exam-001",                    // string: unique identifier
+  "sequenceNumber": 1234,               // integer: no quotes
+  "price": 2500.50,                     // number: decimal
+  "isUrgent": true,                     // boolean: no quotes
+  "tags": ["chest", "routine"],        // array
+  "measurements": {                     // object
+    "lungVolume": 4.5,
+    "unit": "liters"
+  },
+  "notes": null                         // explicit null
+}
+```
+
+
+## Error Response Pattern
+
+
+When validation fails:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid input data",
+    "details": [
+      {
+        "field": "examDate",
+        "issue": "Invalid date format",
+        "expected": "ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)"
+      },
+      {
+        "field": "modality",
+        "issue": "Invalid value",
+        "expected": "One of: CT, MR, CR, DX, US"
+      }
+    ]
+  },
+  "meta": {
+    "timestamp": "2024-01-15T16:45:00Z",
+    "requestId": "req-xyz789"
+  }
+}
+```
+
+
+## Practical Example: Medical Imaging Study
+
+
+Here's a complete example for a radiology study:
+
+```json
+{
+  "data": {
+    "studyInstanceUID": "1.2.840.113619.2.55.3.604688",
+    "accessionNumber": "ACC-2024-001234",
+    "patient": {
+      "mrn": "12345678",
+      "name": "Doe^John^Middle",
+      "birthDate": "1979-05-15",
+      "sex": "M"
+    },
+    "study": {
+      "date": "2024-01-15",
+      "time": "14:30:45",
+      "description": "CT CHEST W/O CONTRAST",
+      "modality": "CT",
+      "bodyPartsExamined": "CHEST",
+      "institutionName": "Ramathibodi Hospital"
+    },
+    "series": [
+      {
+        "seriesInstanceUID": "1.2.840.113619.2.55.3.604689",
+        "seriesNumber": 1,
+        "seriesDescription": "Scout",
+        "imageCount": 3
+      },
+      {
+        "seriesInstanceUID": "1.2.840.113619.2.55.3.604690",
+        "seriesNumber": 2,
+        "seriesDescription": "Axial 5mm",
+        "imageCount": 120
+      }
+    ],
+    "status": {
+      "code": "COMPLETED",
+      "reportStatus": "FINAL",
+      "reportedAt": "2024-01-15T16:30:00Z",
+      "reportedBy": {
+        "id": "RAD-789",
+        "name": "Dr. Smith",
+        "role": "ATTENDING_RADIOLOGIST"
+      }
+    }
+  },
+  "_links": {
+    "self": "/api/studies/1.2.840.113619.2.55.3.604688",
+    "report": "/api/studies/1.2.840.113619.2.55.3.604688/report",
+    "images": "/api/studies/1.2.840.113619.2.55.3.604688/images",
+    "dicom": "/api/studies/1.2.840.113619.2.55.3.604688/dicom"
+  },
+  "meta": {
+    "version": "2.0",
+    "generated": "2024-01-15T17:00:00Z"
+  }
+}
+```
+
+
+## Key Takeaways
+
+
+1. **Consistency is crucial** - Pick a naming convention and stick to it
+2. **Use proper data types** - Numbers without quotes, booleans as true/false
+3. **ISO 8601 for dates** - Always use standard date formats
+4. **Include metadata** - Version, timestamps, request IDs help with debugging
+5. **HATEOAS links** - Help clients navigate your API
+6. **Nest thoughtfully** - Only when representing actual relationships
+7. **Handle nulls explicitly** - Differentiate between null and missing
+8. **Version your API** - Include version in metadata or URL
