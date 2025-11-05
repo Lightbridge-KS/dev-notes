@@ -52,6 +52,9 @@ book:
     - part: SSH
       chapters: 
         - "content/ssh/ssh-port-forwarding.qmd"
+    - part: Git
+      chapters: 
+        - "content/git/git_rebase-vs-merge.qmd"
     - part: Network
       chapters: 
         - "content/network/gRPC.qmd"

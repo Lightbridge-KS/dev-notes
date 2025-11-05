@@ -1,0 +1,130 @@
+# Git rebase vs merge
+
+### Understanding
+
+#### Merge Strategy
+
+Creates a merge commit that ties two histories together:
+
+- Before git pull --no-rebase:
+  
+  ```
+           A (your commit)
+          /
+  ---o---o
+          \
+           B---C---D (remote commits)
+  ```
+
+- After git pull --no-rebase:
+
+```
+           A
+          /   \
+  ---o---o     M (merge commit)
+          \   /
+           B-C-D
+```
+
+#### Rebase Strategy
+
+Replays your commits on top of the remote commits:
+
+  
+- Before git pull --rebase:
+  
+```
+           A (your commit)
+          /
+  ---o---o
+          \
+           B---C---D (remote commits)
+
+```
+
+- After git pull --rebase:
+
+```
+                     A' (your commit, replayed)
+                    /
+  ---o---o---B---C-D
+```
+
+Notice: Your commit A becomes A' (new commit hash) because it now has a different parent.
+
+#### Pros & Cons
+
+Merge (git pull --no-rebase)
+
+Pros:
+
+- ✅ Preserves complete history (shows when branches diverged)
+- ✅ Safer - doesn't rewrite commits
+- ✅ Better for shared branches with multiple collaborators
+- ✅ Maintains context of when integration happened
+
+Cons:
+- ❌ Creates extra merge commits (can clutter history)
+- ❌ Non-linear history (harder to follow)
+- ❌ git log becomes more complex with many merges
+
+Rebase (git pull --rebase)
+
+Pros:
+
+- ✅ Clean, linear history (easier to read)
+- ✅ No extra merge commits
+- ✅ Perfect for keeping feature branches up-to-date
+- ✅ Makes git log and git bisect simpler
+
+Cons:
+
+- ❌ Rewrites commit history (changes commit hashes)
+- ❌ Can be dangerous if commits are already pushed and shared
+- ❌ Potential for conflicts during replay (though same as merge)
+
+#### Recommendations
+
+Use Rebase for:
+
+- 🎯 Pulling from main/master (your typical workflow)
+- 🎯 Keeping feature branches up-to-date
+- 🎯 Solo work or small teams
+- 🎯 When you want clean, readable history
+
+Use Merge for:
+
+- 🎯 Integrating feature branches into main (via PRs)
+- 🎯 When commits are already shared with others
+- 🎯 When you need to preserve the exact timeline
+- 🎯 Highly collaborative branches
+
+### Setting
+
+Based on your workflow (working on main, pulling updates), I recommend:
+
+```zsh
+# Set rebase as default for pulls
+git config --global pull.rebase true
+
+# But preserve merge commits when they exist
+git config --global pull.rebase merges
+
+The pull.rebase merges option is a nice middle ground: it rebases your commits but preserves any merge commits in your history (useful for PR merges).
+```
+
+Configuration Commands
+
+```zsh
+# Option 1: Always rebase (cleanest)
+git config --global pull.rebase true
+
+# Option 2: Always rebase, preserve merges (recommended)
+git config --global pull.rebase merges
+
+# Option 3: Always merge (safest, more history)
+git config --global pull.rebase false
+
+# Check current setting
+git config --global pull.rebase
+```
