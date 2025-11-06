@@ -65,6 +65,7 @@ book:
     - part: Hardware
       chapters: 
         - "content/hardware/hardware_deeplearning-llm.qmd"
+        - "content/hardware/hardware_ai-server-scaling.qmd"
 
 bibliography: references.bib
 
