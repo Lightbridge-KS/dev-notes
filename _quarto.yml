@@ -66,6 +66,7 @@ book:
       chapters: 
         - "content/hardware/hardware_deeplearning-llm.qmd"
         - "content/hardware/hardware_ai-server-scaling.qmd"
+        - "content/hardware/hardware_gpu_allocation.qmd"
 
 bibliography: references.bib
 

@@ -1,6 +1,17 @@
 ## AI Server Scaling Framework for Hospital Deployment
 
+::: {.callout-note appearance="default" collapse="false"}
+Q: Please help me forming an idea/framwork for AI server scaling in these scenarios:
+ 
+1. local LLM inference in the hospital with multiple concurrent users (e.g, via Chatbot interface). The result is stream in realtime. 
+2. local LLM inference in the hospital with a few user, which use by API call (e.g., LLM structural data extraction for research). The result can be wait. 
+3. local LLM fine tuning or training CNN model. 
 
+In each of the above use cases, discuss about: 
+
+1. Scaling: vertical approach (e.g., add more L40s GPU in a single server [max 2 slots]) or horizontal approach (e.g, add more AI servers), which is more efficient? 
+2. Provide System architecture that could effectively server those needs.
+:::
 
 ## Scenario 1: Real-time Multi-user Chatbot
 
