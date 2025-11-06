@@ -62,6 +62,9 @@ book:
     - part: API
       chapters: 
         - "content/api/api-json-table-onerow.qmd"
+    - part: Hardware
+      chapters: 
+        - "content/hardware/hardware_deeplearning-llm.qmd"
 
 bibliography: references.bib
 
