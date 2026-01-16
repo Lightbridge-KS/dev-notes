@@ -1,0 +1,135 @@
+---
+title: "RPC-Style API"
+---
+
+**RPC (Remote Procedure Call)** is an API design style where the client calls a function/procedure on the server as if it were a local function call. The focus is on **actions** (verbs) rather than resources (nouns).
+
+## Core Concept
+
+```
+┌─────────────────┐                      ┌─────────────────┐
+│     Client      │                      │     Server      │
+│                 │   "Call function"    │                 │
+│  calculateTax() │ ──────────────────▶  │  calculateTax() │
+│                 │                      │  (actual logic) │
+│                 │ ◀──────────────────  │                 │
+│                 │   "Return result"    │                 │
+└─────────────────┘                      └─────────────────┘
+```
+
+The client *thinks* it's calling a local function, but the call is actually sent over the network to execute on the server.
+
+---
+
+## RPC vs REST Comparison
+
+| Aspect | RPC-Style | REST-Style |
+|--------|-----------|------------|
+| Focus | **Actions** (verbs) | **Resources** (nouns) |
+| Endpoint | `/calculateTax` | `/invoices/{id}` |
+| HTTP Methods | Usually POST for everything | GET, POST, PUT, DELETE |
+| Naming | `createUser`, `sendEmail` | `POST /users`, `POST /emails` |
+
+---
+
+## Simple Example
+
+**Scenario:** A radiology report service
+
+### RPC-Style Endpoints
+
+```
+POST /analyzeImage
+POST /generateReport
+POST /sendToPhysician
+POST /calculateDose
+```
+
+### Example Request/Response
+
+```http
+POST /analyzeImage HTTP/1.1
+Content-Type: application/json
+
+{
+  "imageId": "CT-2024-001",
+  "analysisType": "lung-nodule-detection",
+  "parameters": {
+    "sensitivity": "high"
+  }
+}
+```
+
+```json
+{
+  "status": "success",
+  "findings": [
+    {
+      "type": "nodule",
+      "location": "right-upper-lobe",
+      "size_mm": 8.2,
+      "confidence": 0.94
+    }
+  ]
+}
+```
+
+---
+
+## Python Example (Flask)
+
+```python
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+# RPC-style: endpoint = action name
+@app.route('/calculateBMI', methods=['POST'])
+def calculate_bmi():
+    data = request.json
+    weight = data['weight_kg']
+    height = data['height_m']
+    
+    bmi = weight / (height ** 2)
+    
+    return jsonify({
+        "bmi": round(bmi, 2),
+        "category": classify_bmi(bmi)
+    })
+
+@app.route('/convertDicomToPng', methods=['POST'])
+def convert_dicom_to_png():
+    data = request.json
+    dicom_path = data['dicom_path']
+    # ... conversion logic
+    return jsonify({"png_url": "/images/output.png"})
+```
+
+---
+
+## When to Use RPC-Style?
+
+**Good fit:**
+- Action-oriented operations (e.g., `runAnalysis`, `sendNotification`)
+- Complex operations that don't map to CRUD
+- Internal microservices communication
+- AI/ML inference APIs (like radiology AI!)
+
+**Less ideal:**
+- Standard CRUD operations on resources
+- Public APIs where REST conventions are expected
+
+---
+
+## Modern RPC Frameworks
+
+```
+┌────────────────────────────────────────────┐
+│           Popular RPC Frameworks           │
+├────────────────────────────────────────────┤
+│  • gRPC (Google) - Binary, high performance│
+│  • JSON-RPC      - Simple, JSON-based      │
+│  • tRPC          - TypeScript end-to-end   │
+│  • XML-RPC       - Legacy, XML-based       │
+└────────────────────────────────────────────┘
+```
