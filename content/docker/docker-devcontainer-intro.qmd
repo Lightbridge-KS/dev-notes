@@ -1,0 +1,108 @@
+---
+title: "What is `.devcontainer`?"
+---
+
+A `.devcontainer` is a **folder in your project** that tells VS Code (or other compatible editors) how to create a **Development Container** — a Docker-based development environment.
+
+## The Big Picture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Your Mac (Host Machine)                                │
+│                                                         │
+│   ┌─────────────────────────────────────────────────┐   │
+│   │  VS Code                                        │   │
+│   │                                                 │   │
+│   │   Reads .devcontainer/                          │   │
+│   │         │                                       │   │
+│   │         ▼                                       │   │
+│   │   ┌─────────────────────────────────────────┐   │   │
+│   │   │  Docker Container                       │   │   │
+│   │   │                                         │   │   │
+│   │   │  • Isolated Linux environment           │   │   │
+│   │   │  • Pre-installed tools (Python, etc.)   │   │   │
+│   │   │  • Your project files mounted inside    │   │   │
+│   │   │                                         │   │   │
+│   │   └─────────────────────────────────────────┘   │   │
+│   └─────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Folder Structure
+
+```
+your-project/
+├── .devcontainer/
+│   ├── devcontainer.json   <-- Main config file
+│   └── Dockerfile          <-- (Optional) Custom image
+├── src/
+├── README.md
+└── ...
+```
+
+## What's Inside `devcontainer.json`?
+
+```json
+{
+  "name": "My Python Project",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python"]
+    }
+  },
+  "postCreateCommand": "pip install -r requirements.txt"
+}
+```
+
+## Why Use Dev Containers?
+
+| Problem | Dev Container Solution |
+|---------|----------------------|
+| "Works on my machine" | Same environment for everyone |
+| Complex setup | One-click setup |
+| Polluting your Mac | Isolated, disposable environment |
+| Different OS needs | Run Linux tools on Mac |
+
+## How It Works (Step-by-Step)
+
+```
+1. You open project in VS Code
+         │
+         ▼
+2. VS Code detects .devcontainer/
+         │
+         ▼
+3. Prompt: "Reopen in Container?"
+         │
+         ▼
+4. Docker builds/pulls the image
+         │
+         ▼
+5. Container starts with your code mounted
+         │
+         ▼
+6. VS Code connects to container
+         │
+         ▼
+7. You code inside the container! 🎉
+```
+
+## Real-World Analogy
+
+Think of it like a **recipe card** for your development kitchen:
+
+- **Without devcontainer**: "Install Python... wait, which version? Also install these 10 tools... configure PATH... 😵"
+- **With devcontainer**: "Here's everything pre-configured. Just open and code! 😊"
+
+---
+
+## Getting Started
+
+To use dev containers, you need:
+
+1. **Docker Desktop** installed on your Mac
+2. **VS Code** with the **"Dev Containers" extension**

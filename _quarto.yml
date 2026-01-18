@@ -71,6 +71,12 @@ book:
         - "content/hardware/hardware_deeplearning-llm.qmd"
         - "content/hardware/hardware_ai-server-scaling.qmd"
         - "content/hardware/hardware_gpu_allocation.qmd"
+    - part: Docker
+      chapters: 
+        - text: Devcontainer Intro
+          href: "content/docker/docker-devcontainer-intro.qmd"
+        - text: Python Dev Container
+          href: "content/docker/docker-devcontainer-py.qmd"
 
 bibliography: references.bib
 

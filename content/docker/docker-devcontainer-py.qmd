@@ -1,0 +1,329 @@
+---
+title: "Crash Course: Dev Container for Python + PostgreSQL"
+---
+
+Let's build a complete dev environment step-by-step.
+
+---
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+```
+┌──────────────────────────────────────┐
+│  ✓ Docker Desktop (running)          │
+│  ✓ VS Code                           │
+│  ✓ "Dev Containers" extension        │
+└──────────────────────────────────────┘
+```
+
+Install the extension:
+```
+VS Code → Extensions → Search "Dev Containers" → Install
+```
+
+---
+
+## Final Project Structure
+
+```
+my-python-app/
+├── .devcontainer/
+│   ├── devcontainer.json      # Main config
+│   └── docker-compose.yml     # Multi-container setup
+├── app/
+│   └── main.py
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## Step 1: Create Project Folder
+
+```bash
+mkdir my-python-app
+cd my-python-app
+mkdir -p .devcontainer app
+```
+
+---
+
+## Step 2: Create `devcontainer.json`
+
+This is the **brain** of your dev container setup.
+
+**.devcontainer/devcontainer.json**
+```json
+{
+  "name": "Python + PostgreSQL",
+  
+  // Use docker-compose for multi-container
+  "dockerComposeFile": "docker-compose.yml",
+  
+  // Which service is your dev environment
+  "service": "app",
+  
+  // Where your code lives inside container
+  "workspaceFolder": "/workspace",
+
+  // VS Code customizations
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.pylint",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python"
+      }
+    }
+  },
+
+  // Run after container is created
+  "postCreateCommand": "pip install -r requirements.txt",
+
+  // Features to add
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  }
+}
+```
+
+---
+
+## Step 3: Create `docker-compose.yml`
+
+This defines **two containers**: your app + PostgreSQL.
+
+**.devcontainer/docker-compose.yml**
+```yaml
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/python:3.11
+    volumes:
+      # Mount your project code
+      - ..:/workspace:cached
+    # Keep container running
+    command: sleep infinity
+    # Connect to database network
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/devdb
+
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    volumes:
+      # Persist database data
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: devdb
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres-data:
+```
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Docker Network (auto-created)                              │
+│                                                             │
+│  ┌─────────────────────┐      ┌─────────────────────┐       │
+│  │  app (Python)       │      │  db (PostgreSQL)    │       │
+│  │                     │      │                     │       │
+│  │  • Your code here   │ ───► │  • Port 5432        │       │
+│  │  • VS Code connects │      │  • Data persisted   │       │
+│  │                     │      │                     │       │
+│  └─────────────────────┘      └─────────────────────┘       │
+│           │                                                 │
+│           │ mounted                                         │
+│           ▼                                                 │
+│    /workspace ◄──── Your Mac's project folder               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Step 4: Create App Files
+
+**requirements.txt**
+```
+psycopg2-binary
+sqlalchemy
+fastapi
+uvicorn
+```
+
+**app/main.py**
+```python
+import os
+from sqlalchemy import create_engine, text
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+def test_connection():
+    engine = create_engine(DATABASE_URL)
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT version()"))
+        version = result.fetchone()[0]
+        print(f"Connected to: {version}")
+
+if __name__ == "__main__":
+    test_connection()
+```
+
+---
+
+## Step 5: Open in Dev Container
+
+### Method 1: Command Palette
+```
+1. Open VS Code
+2. File → Open Folder → select "my-python-app"
+3. Cmd + Shift + P → "Dev Containers: Reopen in Container"
+```
+
+### Method 2: Popup
+```
+VS Code will detect .devcontainer and show:
+┌────────────────────────────────────────┐
+│  Folder contains a Dev Container       │
+│  configuration file.                   │
+│                                        │
+│  [Reopen in Container]  [Cancel]       │
+└────────────────────────────────────────┘
+```
+
+---
+
+## Step 6: Wait for Build
+
+First time takes a few minutes:
+
+```
+Building...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100%
+
+✓ Pulling images
+✓ Creating containers  
+✓ Installing extensions
+✓ Running postCreateCommand (pip install)
+✓ Done!
+```
+
+---
+
+## Step 7: Test It!
+
+Open terminal in VS Code (now inside container):
+
+```bash
+# Check Python
+python --version
+# Python 3.11.x
+
+# Test database connection
+python app/main.py
+# Connected to: PostgreSQL 15.x ...
+
+# You can also connect directly
+psql postgresql://postgres:postgres@db:5432/devdb
+```
+
+---
+
+## Quick Reference Card
+
+### Common Commands (inside VS Code)
+
+| Action | Command |
+|--------|---------|
+| Rebuild container | `Cmd+Shift+P` → "Rebuild Container" |
+| Reopen locally | `Cmd+Shift+P` → "Reopen Locally" |
+| View logs | `Cmd+Shift+P` → "Show Log" |
+| Attach terminal | `` Ctrl+` `` |
+
+### Environment Variables Access
+
+```python
+import os
+
+# These are set in docker-compose.yml
+db_url = os.getenv("DATABASE_URL")
+```
+
+### Connect to DB from VS Code
+
+SQLTools extension will auto-detect. Or manually:
+```
+Host: db
+Port: 5432
+User: postgres
+Password: postgres
+Database: devdb
+```
+
+---
+
+## Bonus: Adding More Services
+
+Need Redis? Add to `docker-compose.yml`:
+
+```yaml
+services:
+  app:
+    # ... existing config ...
+    depends_on:
+      - db
+      - redis    # Add this
+
+  db:
+    # ... existing config ...
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+```
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Container won't start | Check Docker Desktop is running |
+| Can't connect to DB | Wait a few seconds for PostgreSQL to initialize |
+| Changes not reflected | Rebuild container (`Cmd+Shift+P` → Rebuild) |
+| Slow performance | Ensure `:cached` on volume mount |
+
+---
+
+## Summary Cheatsheet
+
+```
+.devcontainer/
+├── devcontainer.json    ← "What" (extensions, settings, commands)
+└── docker-compose.yml   ← "How" (services, networks, volumes)
+
+Key devcontainer.json fields:
+  • service          → Which container to develop in
+  • workspaceFolder  → Where code is mounted
+  • postCreateCommand → Setup script
+  • customizations   → VS Code extensions/settings
+
+Key docker-compose.yml patterns:
+  • volumes          → Mount code & persist data
+  • environment      → Pass config to containers
+  • depends_on       → Service startup order
+```
