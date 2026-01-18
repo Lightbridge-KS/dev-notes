@@ -1,0 +1,112 @@
+---
+title: "JWT Token Structure Explained"
+---
+
+A JWT consists of three parts. Here's where this payload fits:
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                        JWT Token                               │
+├──────────────┬──────────────────────┬──────────────────────────┤
+│    HEADER    │       PAYLOAD        │        SIGNATURE         │
+│   (base64)   │      (base64)        │        (base64)          │
+│              │                      │                          │
+│  algorithm   │  ← YOUR DATA HERE    │   verify(header+payload) │
+│  token type  │                      │                          │
+└──────────────┴──────────────────────┴──────────────────────────┘
+                        │
+                        ▼
+              ┌─────────────────────┐
+              │   Claims (JSON)     │
+              └─────────────────────┘
+```
+
+---
+
+## Claims Breakdown
+
+### **Standard Claims** (RFC 7519)
+
+| Key | Name | Your Value | Meaning |
+|-----|------|------------|---------|
+| `sub` | Subject | `"0000-0002-1234-5678"` | Unique identifier for the user (looks like ORCID format) |
+| `iss` | Issuer | `"https://medai-ckan.opend.cloud"` | Who created/signed this token |
+| `aud` | Audience | `"exchange-zone"` | Intended recipient (which service should accept this) |
+| `exp` | Expiration | `1705312800` | Token expires at this Unix timestamp |
+| `iat` | Issued At | `1705309200` | Token was created at this Unix timestamp |
+
+```
+Timeline:
+─────────────────────────────────────────────────────►
+     │                                    │
+     iat                                 exp
+  (issued)                            (expires)
+  1705309200                          1705312800
+  
+  Token valid window = 3600 seconds = 1 hour
+```
+
+---
+
+### **Custom Claims** (CKAN SSO Specific)
+
+| Key | Your Value | Purpose |
+|-----|------------|---------|
+| `user_id` | `"researcher@university.ac.th"` | Login identifier (email) |
+| `name` | `"Dr. Somchai"` | Display name for UI |
+| `organizations` | `["ramathibodi", "consortium-members"]` | Which CKAN organizations user belongs to |
+| `roles` | `["member", "editor"]` | Permission levels in the system |
+| `access_tier` | `"consortium"` | Data access level (likely for tiered datasets) |
+
+---
+
+## How It's Used in Your API
+
+```
+┌──────────┐         ┌─────────────────┐         ┌──────────────┐
+│  Client  │         │   Your API      │         │  CKAN SSO    │
+└────┬─────┘         └────────┬────────┘         └──────┬───────┘
+     │                        │                         │
+     │  1. Login              │                         │
+     │───────────────────────────────────────────────►  │
+     │                        │                         │
+     │  2. JWT Token          │                         │
+     │◄───────────────────────────────────────────────  │
+     │                        │                         │
+     │  3. Request + JWT      │                         │
+     │───────────────────────►│                         │
+     │                        │                         │
+     │                   4. Validate:                   │
+     │                   - Check signature              │
+     │                   - Check exp > now              │
+     │                   - Check aud matches            │
+     │                   - Extract roles/orgs           │
+     │                        │                         │
+     │  5. Response           │                         │
+     │◄───────────────────────│                         │
+```
+
+---
+
+## Authorization Logic Example
+
+```python
+# Your API might check like this:
+
+def authorize_dataset_access(jwt_claims, dataset):
+    # Check organization membership
+    if dataset.org not in jwt_claims["organizations"]:
+        return False
+    
+    # Check role for write operations
+    if request.method in ["POST", "PUT", "DELETE"]:
+        if "editor" not in jwt_claims["roles"]:
+            return False
+    
+    # Check access tier for sensitive data
+    if dataset.sensitivity == "consortium-only":
+        if jwt_claims["access_tier"] != "consortium":
+            return False
+    
+    return True
+```

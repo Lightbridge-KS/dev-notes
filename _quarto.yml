@@ -64,6 +64,8 @@ book:
         - "content/api/api-json-table-onerow.qmd"
         - text: RPC-style API
           href: "content/api/api-rpc-style.qmd"
+        - text: JWT Anatomy
+          href: "content/crypto/jwt-anatomy.qmd"
     - part: Hardware
       chapters: 
         - "content/hardware/hardware_deeplearning-llm.qmd"
