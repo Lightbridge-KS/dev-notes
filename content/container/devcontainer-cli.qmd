@@ -1,0 +1,364 @@
+# Dev Container CLI
+
+There's an official **Dev Container CLI** that's very useful for automation, quick operations, and working outside VS Code.
+
+---
+
+## Installation
+
+```bash
+# Install via npm (recommended)
+npm install -g @devcontainers/cli
+
+# Verify installation
+devcontainer --version
+```
+
+---
+
+## Command Overview
+
+```
+devcontainer <command>
+
+┌─────────────────────────────────────────────────────────────┐
+│  Core Commands                                              │
+├─────────────┬───────────────────────────────────────────────┤
+│  up         │  Create and start dev container               │
+│  build      │  Build dev container image                    │
+│  run-user-commands │  Run postCreateCommand, etc.           │
+│  exec       │  Execute command in container                 │
+├─────────────┼───────────────────────────────────────────────┤
+│  Utility Commands                                           │
+├─────────────┼───────────────────────────────────────────────┤
+│  templates  │  List/apply dev container templates           │
+│  features   │  List/info about dev container features       │
+│  read-configuration │  Read devcontainer.json config        │
+└─────────────┴───────────────────────────────────────────────┘
+```
+
+---
+
+## Essential Commands
+
+### 1. `devcontainer up` — Start Container
+
+The most used command. Builds and starts your dev container.
+
+```bash
+# Basic usage (run from project root)
+devcontainer up --workspace-folder .
+
+# With docker-compose
+devcontainer up --workspace-folder . --docker-compose-path .devcontainer/docker-compose.yml
+```
+
+**Output:**
+```
+[1 ms] @devcontainers/cli 0.52.1
+[2023 ms] Start: Run: docker compose ...
+[5765 ms] Container started successfully!
+
+{
+  "outcome": "success",
+  "containerId": "a1b2c3d4e5f6...",
+  "remoteUser": "vscode",
+  "remoteWorkspaceFolder": "/workspace"
+}
+```
+
+**Useful flags:**
+```bash
+# Don't use cache (fresh build)
+devcontainer up --workspace-folder . --no-cache
+
+# Remove existing container first
+devcontainer up --workspace-folder . --remove-existing-container
+
+# Specify config file explicitly
+devcontainer up --workspace-folder . --config .devcontainer/devcontainer.json
+```
+
+---
+
+### 2. `devcontainer exec` — Run Commands Inside
+
+Execute any command inside the running container.
+
+```bash
+# Run a single command
+devcontainer exec --workspace-folder . python --version
+
+# Run your app
+devcontainer exec --workspace-folder . python app/main.py
+
+# Interactive shell
+devcontainer exec --workspace-folder . bash
+
+# Run with specific user
+devcontainer exec --workspace-folder . --remote-user root apt update
+```
+
+**Practical examples:**
+```bash
+# Install a package
+devcontainer exec --workspace-folder . pip install requests
+
+# Run tests
+devcontainer exec --workspace-folder . pytest
+
+# Database migration
+devcontainer exec --workspace-folder . alembic upgrade head
+
+# Lint code
+devcontainer exec --workspace-folder . pylint app/
+```
+
+---
+
+### 3. `devcontainer build` — Build Image Only
+
+Build the image without starting the container.
+
+```bash
+# Basic build
+devcontainer build --workspace-folder .
+
+# Build with no cache
+devcontainer build --workspace-folder . --no-cache
+
+# Push to registry after build
+devcontainer build --workspace-folder . --image-name myregistry/myapp:dev --push
+```
+
+**Use case — CI/CD prebuild:**
+```bash
+# Build and push image for faster team setup
+devcontainer build \
+  --workspace-folder . \
+  --image-name ghcr.io/myorg/myapp-devcontainer:latest \
+  --push
+```
+
+---
+
+### 4. `devcontainer templates` — Quick Start
+
+List and apply official templates.
+
+```bash
+# List available templates
+devcontainer templates list
+
+# Apply a template to current folder
+devcontainer templates apply --template-id python
+devcontainer templates apply --template-id typescript-node
+devcontainer templates apply --template-id docker-in-docker
+```
+
+**Common templates:**
+```
+┌────────────────────────┬─────────────────────────────────┐
+│  Template ID           │  Description                    │
+├────────────────────────┼─────────────────────────────────┤
+│  python                │  Python 3                       │
+│  typescript-node       │  Node.js + TypeScript           │
+│  dotnet                │  .NET (C#, F#)                  │
+│  docker-in-docker      │  Docker inside dev container    │
+│  postgres              │  PostgreSQL database            │
+│  universal             │  Multi-language (Python, Node)  │
+└────────────────────────┴─────────────────────────────────┘
+```
+
+---
+
+### 5. `devcontainer features` — Browse Features
+
+Features are add-ons you can include in your container.
+
+```bash
+# List popular features
+devcontainer features list
+
+# Get info about a specific feature
+devcontainer features info ghcr.io/devcontainers/features/docker-in-docker
+```
+
+**Popular features:**
+```
+┌─────────────────────────────────────────────┬──────────────────────┐
+│  Feature                                    │  What it adds        │
+├─────────────────────────────────────────────┼──────────────────────┤
+│  ghcr.io/devcontainers/features/git        │  Git                 │
+│  ghcr.io/devcontainers/features/node       │  Node.js             │
+│  ghcr.io/devcontainers/features/docker-in-docker │  Docker CLI     │
+│  ghcr.io/devcontainers/features/python     │  Python              │
+│  ghcr.io/devcontainers/features/aws-cli    │  AWS CLI             │
+│  ghcr.io/devcontainers/features/github-cli │  gh CLI              │
+└─────────────────────────────────────────────┴──────────────────────┘
+```
+
+---
+
+### 6. `devcontainer read-configuration` — Debug Config
+
+Parse and display the merged configuration.
+
+```bash
+devcontainer read-configuration --workspace-folder .
+```
+
+**Helpful for debugging:**
+```bash
+# See what config is actually being used
+devcontainer read-configuration --workspace-folder . | jq '.configuration'
+
+# Check merged features
+devcontainer read-configuration --workspace-folder . | jq '.configuration.features'
+```
+
+---
+
+## Workflow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Typical CLI Workflow                                           │
+│                                                                 │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
+│   │  templates  │───►│    up       │───►│    exec     │         │
+│   │  apply      │    │  (build &   │    │  (run       │         │
+│   │             │    │   start)    │    │   commands) │         │
+│   └─────────────┘    └─────────────┘    └─────────────┘         │
+│                                                                 │
+│   # Quick start      # Start env       # Work inside            │
+│   devcontainer       devcontainer up   devcontainer exec        │
+│   templates apply    --workspace-      --workspace-folder .     │
+│   --template-id      folder .          python app/main.py       │
+│   python                                                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Practical Recipes
+
+### Recipe 1: Quick Test Environment
+
+```bash
+# Start container and run tests in one go
+devcontainer up --workspace-folder . && \
+devcontainer exec --workspace-folder . pytest -v
+```
+
+### Recipe 2: Shell Alias for Convenience
+
+Add to your `~/.zshrc`:
+
+```bash
+# Shortcuts for devcontainer
+alias dcu="devcontainer up --workspace-folder ."
+alias dce="devcontainer exec --workspace-folder ."
+alias dcb="devcontainer build --workspace-folder ."
+
+# Usage:
+# dcu                    → Start container
+# dce python main.py     → Run command
+# dce bash               → Interactive shell
+```
+
+### Recipe 3: CI/CD Script
+
+```bash
+#!/bin/bash
+# ci-test.sh - Run tests in dev container
+
+set -e
+
+echo "Starting dev container..."
+devcontainer up --workspace-folder .
+
+echo "Installing dependencies..."
+devcontainer exec --workspace-folder . pip install -r requirements.txt
+
+echo "Running tests..."
+devcontainer exec --workspace-folder . pytest --cov=app tests/
+
+echo "Running linter..."
+devcontainer exec --workspace-folder . pylint app/
+```
+
+### Recipe 4: Initialize New Project
+
+```bash
+#!/bin/bash
+# init-python-project.sh
+
+PROJECT_NAME=$1
+
+mkdir -p "$PROJECT_NAME"
+cd "$PROJECT_NAME"
+
+# Apply Python template
+devcontainer templates apply --template-id python
+
+# Add PostgreSQL feature to devcontainer.json
+# (you'd manually edit or use jq)
+
+# Start it up
+devcontainer up --workspace-folder .
+
+echo "✓ Project $PROJECT_NAME ready!"
+```
+
+---
+
+## Comparison: GUI vs CLI
+
+```
+┌─────────────────────┬─────────────────────┬─────────────────────┐
+│  Task               │  VS Code GUI        │  CLI                │
+├─────────────────────┼─────────────────────┼─────────────────────┤
+│  Start container    │  Click popup        │  devcontainer up    │
+│  Rebuild            │  Cmd+Shift+P →      │  devcontainer up    │
+│                     │  "Rebuild"          │  --no-cache         │
+│  Run command        │  Open terminal      │  devcontainer exec  │
+│  CI/CD              │  ❌ Not suitable    │  ✓ Perfect          │
+│  Scripting          │  ❌ Not suitable    │  ✓ Perfect          │
+│  Quick test         │  Slow (GUI)         │  Fast (terminal)    │
+└─────────────────────┴─────────────────────┴─────────────────────┘
+```
+
+---
+
+## Cheatsheet
+
+```bash
+# ═══════════════════════════════════════════════════════════
+#  DEVCONTAINER CLI CHEATSHEET
+# ═══════════════════════════════════════════════════════════
+
+# Setup
+npm install -g @devcontainers/cli
+
+# Start container
+devcontainer up --workspace-folder .
+devcontainer up --workspace-folder . --no-cache          # Fresh build
+devcontainer up --workspace-folder . --remove-existing   # Reset
+
+# Run commands inside
+devcontainer exec --workspace-folder . <command>
+devcontainer exec --workspace-folder . bash              # Shell
+devcontainer exec --workspace-folder . python main.py    # Run app
+
+# Build only (no start)
+devcontainer build --workspace-folder .
+devcontainer build --workspace-folder . --image-name myimg --push
+
+# Templates
+devcontainer templates list
+devcontainer templates apply --template-id python
+
+# Debug
+devcontainer read-configuration --workspace-folder .
+```
