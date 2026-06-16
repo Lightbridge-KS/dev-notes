@@ -1,0 +1,267 @@
+---
+title: "Semantic Versioning Applied to APIs"
+---
+
+> A practical reference for versioning HTTP/REST APIs described with OpenAPI.
+> Adapts the [SemVer 2.0.0](https://semver.org/) `MAJOR.MINOR.PATCH` model to the
+> realities of an API *contract* (rather than a software package).
+
+---
+
+## 1. First, separate the three things being versioned
+
+People constantly conflate these. Keep them distinct:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. The OpenAPI SPEC version      →  openapi: 3.1.0          │
+│    The format your document is written in.                  │
+│    (Uses SemVer itself; not your concern when versioning the│
+│     API — just pick a spec version and stick to it.)        │
+├─────────────────────────────────────────────────────────────┤
+│ 2. Your API's CONTRACT version   →  info.version: 1.4.2     │
+│    The version of YOUR API, recorded in the OpenAPI doc.    │
+│    This is where SemVer applies.                            │
+├─────────────────────────────────────────────────────────────┤
+│ 3. The versioning STRATEGY        →  /v1/users              │
+│    How consumers SELECT a version at runtime.               │
+│    (URI path, header, media type, date, …)                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key fact:** OpenAPI is *descriptive, not prescriptive*. The spec does **not**
+mandate a versioning scheme. `info.version` is a free-form string — SemVer there
+is convention, not a requirement. The rules below come from industry practice,
+not from the OpenAPI standard.
+
+---
+
+## 2. The SemVer model, re-defined for APIs
+
+Same `MAJOR.MINOR.PATCH` shape — but each digit is defined in terms of the
+**contract**, not the code.
+
+```
+MAJOR . MINOR . PATCH
+  │       │       │
+  │       │       └─ Backward-compatible FIX. No contract change.
+  │       │          e.g. bug fix, doc clarification, perf improvement,
+  │       │               fixing a response to match documented behavior
+  │       │
+  │       └───────── Backward-compatible ADDITION. Old clients unaffected.
+  │                  e.g. new endpoint, new OPTIONAL request field,
+  │                       new optional query param, new response field
+  │
+  └───────────────── BREAKING change. Old clients may break.
+                     e.g. remove/rename a field, change a type,
+                          make an optional field required,
+                          delete or rename an endpoint, tighten validation
+```
+
+### The one test that decides everything
+
+> **Could an existing consumer's code stop working if I deployed this change
+> without telling them?**
+>
+> - **Yes** → it's breaking → **MAJOR**
+> - **No, but there's new capability** → **MINOR**
+> - **No, and nothing new to use** → **PATCH**
+
+---
+
+## 3. Breaking vs. non-breaking: the field-level rules
+
+This is the part you'll reach for most often.
+
+### Non-breaking (safe — MINOR or PATCH)
+
+| Change                                              | Why it's safe                                  |
+|-----------------------------------------------------|------------------------------------------------|
+| Add a new endpoint / operation                      | Old clients don't call it.                     |
+| Add a new **optional** request field or query param | Old clients omit it; server uses a default.    |
+| Add a new field to a **response**                   | Tolerant clients ignore unknown fields.\*      |
+| Add a new optional response header                  | Ignored if unused.                             |
+| Add a new enum value to a **response**              | See caveat below.                              |
+| Loosen a validation constraint (e.g. raise max len) | Previously-valid input still valid.            |
+| Mark something `deprecated`                         | Still works; signals future removal.           |
+| Documentation / description / example changes       | No behavioral change → PATCH.                  |
+
+\* This relies on the **robustness principle** ("be liberal in what you accept").
+It only holds if your consumers ignore unknown fields. Strict-schema clients can
+break on new response fields — know your consumers.
+
+### Breaking (unsafe — MAJOR)
+
+| Change                                              | Why it breaks                                  |
+|-----------------------------------------------------|------------------------------------------------|
+| Remove or rename a field                            | Clients reading it get nothing / errors.       |
+| Remove or rename an endpoint                        | Requests 404.                                  |
+| Change a field's data type (`string` → `int`)       | Deserialization fails.                         |
+| Make an optional field **required**                 | Existing requests now rejected.                |
+| Add a new **required** request field                | Existing requests now incomplete.              |
+| Tighten validation (lower max, new regex)           | Previously-valid input now rejected.           |
+| Change default behavior / default values            | Silent behavioral drift for existing clients.  |
+| Change error codes / status codes clients depend on | Error handling breaks.                         |
+| Add an enum value to a **request** you then require | Old clients can't produce it.                  |
+| Change authentication / required scopes             | Existing auth flows fail.                      |
+
+### The enum asymmetry (a classic trap)
+
+```
+Adding an enum value to a RESPONSE   →  may break strict clients
+                                         (they didn't code for it)
+Adding an enum value to a REQUEST    →  generally safe
+                                         (clients opt in to using it)
+Removing an enum value               →  breaking either way
+```
+
+---
+
+## 4. Contract version vs. exposed version
+
+API versioning differs from package SemVer in one crucial way: **you don't put
+the full version in the URL.**
+
+```
+✗  /v1.4.2/users      ← consumers would chase every patch. Don't.
+✓  /v1/users          ← consumers pin to the MAJOR only.
+```
+
+So there's a deliberate split:
+
+```
+info.version: 1.4.2   ←  full SemVer — lives in the OpenAPI doc,
+        │                 drives changelogs & human communication
+        │
+        └─ exposed as ──►  /v1/...   ←  MAJOR only — the runtime contract
+```
+
+- **PATCH & MINOR** changes are additive and **silent** — same URL, no consumer
+  action required.
+- **MAJOR** changes produce a **new** `/v2`, run in parallel with `/v1`, and
+  trigger a migration + deprecation cycle.
+
+---
+
+## 5. Core philosophy: *evolve additively, version reluctantly*
+
+A new MAJOR version is expensive: every consumer must migrate, and you must run
+old and new in parallel for a deprecation window. So the goal is to design
+changes to be **additive**, so you rarely need a new major version at all.
+
+```
+                Cheap, frequent           Expensive, rare
+                ───────────────           ───────────────
+   PATCH  ──►   MINOR  ──────────────────►  MAJOR
+   (silent)     (silent, additive)          (new /vN, migration,
+                                             parallel running,
+                                             deprecation window)
+
+   Spend most of your life here ↑↑↑          ...and visit here as
+                                             seldom as you can.
+```
+
+Practical tactics to stay additive:
+- Add new fields instead of changing existing ones.
+- Introduce a new endpoint rather than overloading an old one's behavior.
+- Use `deprecated: true` + a sunset header to phase things out gracefully.
+- Never tighten input validation in place — add a new validated path instead.
+
+---
+
+## 6. How consumers select a version (strategies)
+
+OpenAPI documents whichever you pick; it doesn't choose for you.
+
+```
+Strategy          Example                                   Trade-off
+──────────        ─────────────────────────────────         ──────────────────────
+URI path          GET /v1/users                             Most common. Visible,
+                                                             cacheable, trivial to
+                                                             route. Purists object
+                                                             (a URI should name a
+                                                             resource, not a version).
+
+Query param       GET /users?version=1                      Simple; clutters caching,
+                                                             easy to forget.
+
+Custom header     GET /users                                Clean URLs; harder to
+                  X-API-Version: 1                          test via browser/curl.
+
+Media type        GET /users                                "Purest" REST (content
+(content nego.)   Accept: application/vnd.rama.v1+json       negotiation); most
+                                                             complex for clients.
+
+Date-based        GET /users                                Stripe's model. Each date
+                  Stripe-Version: 2024-01-01                is a frozen behavior
+                                                             snapshot. Powerful, heavy
+                                                             to operate.
+```
+
+**Pragmatic default:** URI-path versioning with **MAJOR only** (`/v1`). It's
+visible, cacheable, and effortless to route. Media-type versioning is the
+academically "RESTful" answer but rarely worth the friction.
+
+---
+
+## 7. Recommended baseline
+
+A sensible, low-friction policy for most teams:
+
+```
+1. Write the OpenAPI doc in a fixed spec version      →  openapi: 3.1.0
+2. Record full SemVer in the document                 →  info.version: 1.4.2
+3. Expose MAJOR only in the URI                        →  /v1/...
+4. Apply SemVer semantics by the "would it break a
+   consumer?" test.
+5. Default to additive change; bump MAJOR reluctantly.
+6. When MAJOR is unavoidable:
+     - stand up /v2 alongside /v1
+     - mark /v1 deprecated (deprecated: true + Sunset header)
+     - publish a migration guide
+     - announce a removal date and honor it
+```
+
+---
+
+## 8. Where the real written guidelines live
+
+Since OpenAPI stays silent, the codified rulebooks are large orgs' style guides.
+Read them as four well-reasoned positions, not commandments:
+
+| Source                              | Stance                                          |
+|-------------------------------------|-------------------------------------------------|
+| **Google API Improvement Proposals (AIPs)** | Thorough; major-version-in-path.        |
+| **Microsoft REST API Guidelines**   | Explicit rules; supports header & query styles. |
+| **Zalando RESTful API Guidelines**  | Opinionated; favors additive evolution & media-type; discourages URL versioning. |
+| **Stripe**                          | Canonical date-based versioning.                |
+
+---
+
+## 9. One-screen cheat sheet
+
+```
+WHAT CHANGED?                                        → BUMP
+─────────────────────────────────────────────────     ──────
+Doc / description / example only                       PATCH
+Bug fix, behavior now matches docs                     PATCH
+New endpoint                                           MINOR
+New OPTIONAL request field / query param               MINOR
+New response field (tolerant clients)                  MINOR
+Loosened validation                                    MINOR
+Marked something deprecated                            MINOR
+─────────────────────────────────────────────────     ──────
+Removed / renamed field or endpoint                    MAJOR
+Changed a data type                                    MAJOR
+Optional → required  (or new required field)           MAJOR
+Tightened validation                                   MAJOR
+Changed default behavior / status / error codes        MAJOR
+Changed auth / required scopes                          MAJOR
+
+REMEMBER:
+  • info.version = full SemVer (1.4.2)   |   URL = MAJOR only (/v1)
+  • MINOR & PATCH are silent; MAJOR spawns a new /vN
+  • The test: "would an existing consumer break if I shipped this
+    silently?"  Yes → MAJOR.
+  • Evolve additively. Version reluctantly.
+```

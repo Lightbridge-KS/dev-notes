@@ -45,7 +45,10 @@ book:
         - "content/firebase/firebase-flutter-hosting.qmd"
     - part: Versioning
       chapters: 
-        - "content/version/semver-practical.qmd"
+        - text: SemVer
+          href: "content/version/semver-practical.qmd"
+        - text: API Version (SemVer)
+          href: "content/api/semver-for-apis.qmd"
     - part: Linux
       chapters: 
         - "content/linux/linux-setup.qmd"
